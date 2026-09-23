@@ -5,6 +5,37 @@
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-09-23
+
+### Русский
+
+#### Добавлено
+- Выбор вместо ошибки при неоднозначности. Если под название подходит несколько досок,
+  проектов, колонок или сотрудников, клиент с MCP elicitation показывает человеку варианты,
+  и действие продолжается с выбранным (по протоколу 2026-07-28 — через повтор вызова с
+  ответом; выбор и подтверждение записи уживаются в одном действии). Отказ от выбора отменяет
+  действие.
+
+#### Изменено
+- Несколько частичных совпадений (до 10) теперь тоже считаются неоднозначностью: «Иван» при
+  двух Иванах предлагает выбрать, а не отвечает «не найдено».
+- Сотрудники в вариантах показываются с почтой — тёзок можно различить.
+- Без elicitation ошибка перечисляет варианты и просит модель уточнить у пользователя.
+
+### English
+
+#### Added
+- A choice instead of an error for ambiguous names. When a name fits several boards, projects,
+  columns or people, a client with MCP elicitation shows the person the options and the action
+  goes on with the chosen one (with the 2026-07-28 protocol, by re-running the call with the
+  answer; a choice and a write confirmation work together in one action). Declining cancels.
+
+#### Changed
+- Several partial matches (up to 10) now count as ambiguous too: "Ivan" with two Ivans asks
+  which one instead of answering "not found".
+- People in the options show their email, so namesakes can be told apart.
+- Without elicitation the error lists the options and asks the model to check with the user.
+
 ## [0.6.0] — 2026-09-23
 
 ### Русский
@@ -248,7 +279,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.4.0...v0.5.0

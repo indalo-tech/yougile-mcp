@@ -2,6 +2,7 @@ import pytest
 from conftest import MSK_2026_09_30
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
+from mcp.types import ElicitResult
 
 from yougile_mcp import runtime
 from yougile_mcp.server import build_server
@@ -200,6 +201,63 @@ async def test_explicit_project_beats_the_remembered_board(make_runtime):
             assert found["scope"] == "Разработка / Сайт / Очередь", "the person's choice wins"
     finally:
         runtime.set_default(None)
+
+
+def chooser(picks, asked, confirm=True):
+    """An elicitation handler that picks by label and approves confirmations."""
+
+    async def handler(message, response_type, params, context):
+        asked.append(message)
+        value = params.requested_schema["properties"]["value"]
+        if "oneOf" not in value:
+            return response_type(value=confirm)
+        pick = picks.pop(0)
+        if pick is None:
+            return ElicitResult(action="decline")
+        return response_type(value=next(o["const"] for o in value["oneOf"] if o["title"] == pick))
+
+    return handler
+
+
+async def test_ambiguous_names_are_chosen_by_the_user(client_for, fake):
+    asked = []
+    picks = ["Разработка / Сайт", "Иван Петров (ivan@example.com)"]
+    rt_client = client_for()
+    async with Client(rt_client.transport, elicitation_handler=chooser(picks, asked)) as c:
+        await call(
+            c, "yougile_create_task", title="x", board="Сайт", column="Очередь", assignees=["ан"]
+        )
+    assert "Под «Сайт» подходит несколько досок" in asked[0]
+    assert "Под «ан» подходит несколько сотрудников" in asked[1]
+    body = fake.bodies("POST", "/api-v2/tasks")[-1]
+    assert (body["columnId"], body["assigned"]) == ("c-int-queue", ["u-ivan"])
+
+
+async def test_a_choice_and_a_confirmation_in_one_call(client_for, fake):
+    asked = []
+    rt_client = client_for(confirm_projects=["Клиенты"])
+    async with Client(
+        rt_client.transport, elicitation_handler=chooser(["Клиенты / Сайт"], asked)
+    ) as c:
+        await call(c, "yougile_create_task", title="x", board="Сайт", column="Очередь")
+    assert len(asked) == 2 and "Клиенты" in asked[1], "choice first, then the confirmation"
+    assert fake.bodies("POST", "/api-v2/tasks")[-1]["columnId"] == "c-cli-queue"
+
+
+async def test_declined_choice_cancels(client_for, fake):
+    rt_client = client_for()
+    async with Client(rt_client.transport, elicitation_handler=chooser([None], [])) as c:
+        data = await call(c, "yougile_create_task", title="x", board="Сайт", column="Очередь")
+    assert data == {"cancelled": True, "reason": "the user did not choose"}
+    assert fake.calls("POST", "/api-v2/tasks") == 0
+
+
+async def test_ambiguity_without_elicitation_lists_the_options(client_for):
+    async with client_for() as c:
+        with pytest.raises(
+            ToolError, match="board 'Сайт' is ambiguous: Разработка / Сайт, Клиенты / Сайт. Ask"
+        ):
+            await call(c, "yougile_create_task", title="x", board="Сайт", column="Очередь")
 
 
 async def test_create_task_needs_a_column_without_workflow(client_for):

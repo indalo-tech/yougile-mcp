@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -15,6 +16,22 @@ from .client import YouGileClient
 
 DEFAULT_TTL = 300.0
 PAGE = 1000
+MAX_OPTIONS = 10  # more partial matches than this: ask for a more exact name instead
+
+# What the person picked for ambiguous names during one tool call: choice_key -> object id.
+_choices: ContextVar[dict[str, str] | None] = ContextVar("yougile_choices", default=None)
+
+
+def choice_key(kind: str, ref: str) -> str:
+    return f"{kind}:{_norm(ref)}"
+
+
+def bind_choices(choices: dict[str, str]) -> Token[dict[str, str] | None]:
+    return _choices.set(choices)
+
+
+def reset_choices(token: Token[dict[str, str] | None]) -> None:
+    _choices.reset(token)
 
 
 class NotFound(LookupError):
@@ -22,7 +39,13 @@ class NotFound(LookupError):
 
 
 class Ambiguous(LookupError):
-    pass
+    """Several objects match a name; ``options`` are (id, label) pairs to choose from."""
+
+    def __init__(
+        self, message: str, kind: str = "", ref: str = "", options: list[tuple[str, str]] = ()
+    ) -> None:
+        super().__init__(message)
+        self.kind, self.ref, self.options = kind, ref, list(options)
 
 
 async def fetch_all(
@@ -112,19 +135,24 @@ def _pick(items: Any, ref: str, kind: str, label: Any = None) -> dict:
     for item in items:
         if item.get("id") == ref:
             return item
+    label = label or (lambda i: i.get("title"))
     wanted = _norm(ref)
     exact = [i for i in items if _norm(i.get("title")) == wanted]
     if len(exact) == 1:
         return exact[0]
-    if len(exact) > 1:
-        names = ", ".join((label or (lambda i: i.get("title")))(i) for i in exact)
-        raise Ambiguous(f"{kind} {ref!r} is ambiguous: {names}")
     partial = [i for i in items if wanted and wanted in _norm(i.get("title"))]
-    if len(partial) == 1:
+    if len(partial) == 1 and not exact:
         return partial[0]
-    hint = ", ".join(
-        sorted(str((label or (lambda i: i.get("title")))(i)) for i in (partial or items))[:20]
-    )
+    matches = exact or partial
+    if len(exact) > 1 or 1 < len(partial) <= MAX_OPTIONS:
+        chosen = (_choices.get() or {}).get(choice_key(kind, ref))
+        for item in matches:
+            if chosen is not None and item.get("id") == chosen:
+                return item
+        options = [(str(i.get("id")), str(label(i))) for i in matches]
+        names = ", ".join(name for _, name in options)
+        raise Ambiguous(f"{kind} {ref!r} is ambiguous: {names}", kind, ref, options)
+    hint = ", ".join(sorted(str(label(i)) for i in (partial or items))[:20])
     raise NotFound(f"{kind} {ref!r} not found" + (f". Candidates: {hint}" if hint else ""))
 
 
@@ -205,5 +233,14 @@ class Directory:
             if user.get("id") == ref or _norm(user.get("email")) == wanted:
                 return user
         named = [dict(u, title=u.get("realName") or u.get("email")) for u in users]
-        found = _pick(named, ref, "user")
+        found = _pick(
+            named,
+            ref,
+            "user",
+            label=lambda u: (
+                f"{u['title']} ({u['email']})"
+                if u.get("email") and u["email"] != u["title"]
+                else u["title"]
+            ),
+        )
         return next(u for u in users if u.get("id") == found.get("id"))

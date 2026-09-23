@@ -19,7 +19,7 @@ from mcp.types import ElicitRequest, ElicitRequestFormParams, InputRequiredResul
 from . import runtime
 from .catalog import find
 from .client import YouGileError
-from .directory import Ambiguous, NotFound
+from .directory import Ambiguous, NotFound, bind_choices, choice_key, reset_choices
 from .dispatch import ParamError, Prepared, error_hint, prepare
 from .policy import PolicyError
 
@@ -36,7 +36,11 @@ class InputRequired(Exception):  # noqa: N818 - control flow, not an error
 
 
 class Cancelled(Exception):  # noqa: N818 - control flow, not an error
-    """The user declined a confirmation."""
+    """The user declined a confirmation or a choice."""
+
+    def __init__(self, reason: str = "the user did not confirm the write") -> None:
+        super().__init__(reason)
+        self.reason = reason
 
 
 def _client_can_elicit(ctx: Context) -> bool:
@@ -71,7 +75,7 @@ async def ask_confirmation(
     if ctx is not None and _client_can_elicit(ctx):
         if _is_modern(ctx):
             responses = ctx.input_responses
-            if responses is None:
+            if responses is None or "confirm" not in responses:  # an earlier round was a choice
                 params = ElicitRequestFormParams(
                     message=message,
                     requested_schema={
@@ -100,6 +104,70 @@ async def ask_confirmation(
         f"({', '.join(titles)}). Show the user exactly what will be written:\n{what}\n"
         "Repeat the call with confirm=true only after the user explicitly agrees."
     )
+
+
+CHOICE_PREFIX = "choose:"
+MAX_CHOICES = 5  # ambiguous names one tool call may ask about
+KIND_WORDS = {"user": "сотрудников", "board": "досок", "project": "проектов", "column": "колонок"}
+
+
+def _round_state(ctx: Context | None) -> tuple[dict[str, str], bool]:
+    """Choices made on earlier rounds of this call (2026-07-28 protocol): request_state carries
+    the older ones, input_responses the newest. The flag says a choice was declined."""
+    if ctx is None or not _is_modern(ctx):
+        return {}, False
+    try:
+        state = json.loads(ctx.request_state or "{}")
+    except ValueError:
+        state = {}
+    saved = state.get("choices") if isinstance(state, dict) else None
+    choices = {str(k): str(v) for k, v in saved.items()} if isinstance(saved, dict) else {}
+    declined = False
+    for key, answer in (ctx.input_responses or {}).items():
+        if not key.startswith(CHOICE_PREFIX):
+            continue
+        content = getattr(answer, "content", None) or {}
+        if getattr(answer, "action", None) == "accept" and content.get("value"):
+            choices[key.removeprefix(CHOICE_PREFIX)] = str(content["value"])
+        else:
+            declined = True
+    return choices, declined
+
+
+async def ask_choice(ctx: Context, exc: Ambiguous, choices: dict[str, str]) -> str:
+    """The id the person picked. Raises InputRequired (modern clients) or Cancelled."""
+    what = KIND_WORDS.get(exc.kind, "вариантов")
+    message = f"Под «{exc.ref}» подходит несколько {what}. Выберите нужный вариант."
+    if _is_modern(ctx):
+        params = ElicitRequestFormParams(
+            message=message,
+            requested_schema={
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "type": "string",
+                        "title": "Вариант",
+                        "oneOf": [{"const": i, "title": title} for i, title in exc.options],
+                    }
+                },
+                "required": ["value"],
+            },
+        )
+        raise InputRequired(
+            InputRequiredResult(
+                result_type="input_required",
+                input_requests={
+                    CHOICE_PREFIX + choice_key(exc.kind, exc.ref): ElicitRequest(
+                        method="elicitation/create", params=params
+                    )
+                },
+                request_state=json.dumps({"choices": choices}, ensure_ascii=False),
+            )
+        )
+    result = await ctx.elicit(message, response_type={i: {"title": t} for i, t in exc.options})
+    if result.action != "accept":
+        raise Cancelled("the user did not choose")
+    return str(result.data)
 
 
 class Caller:
@@ -161,21 +229,46 @@ P = ParamSpec("P")
 
 
 def tool_errors(fn: Callable[P, Awaitable[Any]]) -> Callable[P, Awaitable[Any]]:
-    """Map domain errors to ToolError and control-flow exceptions to results."""
+    """Map domain errors to ToolError and control-flow exceptions to results. When a name is
+    ambiguous and the client can ask its user, the user picks and the tool runs again."""
 
     @functools.wraps(fn)
     async def wrapper(*args: P.args, **kwargs: P.kwargs) -> Any:
+        ctx = kwargs.get("ctx") or next((a for a in args if isinstance(a, Context)), None)
+        choices, declined = _round_state(ctx)
+        if declined:
+            return {"cancelled": True, "reason": "the user did not choose"}
+        token = bind_choices(choices)
         try:
-            return await fn(*args, **kwargs)
+            while True:
+                try:
+                    return await fn(*args, **kwargs)
+                except Ambiguous as exc:
+                    key = choice_key(exc.kind, exc.ref)
+                    if (
+                        not exc.options
+                        or ctx is None
+                        or not _client_can_elicit(ctx)
+                        or key in choices
+                        or len(choices) >= MAX_CHOICES
+                    ):
+                        raise ToolError(
+                            f"{exc}. Ask the user which one they mean and pass it exactly"
+                        ) from exc
+                    choices[key] = await ask_choice(ctx, exc, choices)
         except InputRequired as req:
+            if choices and req.result.request_state is None:
+                req.result.request_state = json.dumps({"choices": choices}, ensure_ascii=False)
             return req.result
-        except Cancelled:
-            return {"cancelled": True, "reason": "the user did not confirm the write"}
+        except Cancelled as exc:
+            return {"cancelled": True, "reason": exc.reason}
         except PolicyError as exc:
             raise ToolError(describe_policy_error(exc)) from exc
         except (ParamError, NotFound, Ambiguous, ValueError) as exc:
             raise ToolError(str(exc)) from exc
         except YouGileError as exc:
             raise ToolError(describe_api_error(exc)) from exc
+        finally:
+            reset_choices(token)
 
     return wrapper

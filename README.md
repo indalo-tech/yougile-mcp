@@ -193,6 +193,11 @@ YouGile хранит часы только суммой по задаче, бе�
 будет записано. Модель должна показать его пользователю и повторить вызов с `confirm=true`
 только после его явного согласия.
 
+**Неоднозначные названия.** Если под название подходит несколько досок, проектов, колонок или
+сотрудников («Сайт» есть в двух проектах, «Иван» — это двое), клиент с MCP elicitation
+показывает человеку варианты, и действие продолжается с выбранным. Без elicitation инструмент
+возвращает ошибку со списком вариантов, чтобы модель уточнила у пользователя.
+
 ### Переменные окружения
 
 | переменная | по умолчанию | назначение |
@@ -449,6 +454,11 @@ confirms the write in the client's UI and the model cannot skip that step. One a
 once, even when it performs several writes. Otherwise the tool returns `confirmation_required`
 with exactly what would be written; the model has to show it to the user and repeat the call
 with `confirm=true` only after explicit consent.
+
+**Ambiguous names.** When a name fits several boards, projects, columns or people ("Site"
+exists in two projects, there are two Ivans), a client with MCP elicitation shows the person the
+options and the action goes on with the chosen one. Without elicitation the tool returns an
+error listing the options, so the model asks the user.
 
 ### Environment variables
 
