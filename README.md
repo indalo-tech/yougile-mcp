@@ -1,6 +1,11 @@
 # YouGile MCP
 
-[Русский](#русский) · [English](#english)
+[![Release](https://img.shields.io/github/v/release/indalo-tech/yougile-mcp?label=release)](https://github.com/indalo-tech/yougile-mcp/releases/latest)
+[![CI](https://github.com/indalo-tech/yougile-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/indalo-tech/yougile-mcp/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%E2%80%933.14-blue)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+[Русский](#русский) · [English](#english) · [Changelog](CHANGELOG.md)
 
 MCP server for [YouGile](https://ru.yougile.com) · MCP-сервер для YouGile
 
@@ -13,8 +18,10 @@ MCP-сервер, через который Claude и другие AI-ассис
 
 ### Возможности
 
-- **Весь API.** 65 операций в 10 инструментах плюс справочный `yougile_help`.
-- **Задачи по номеру.** Можно писать сквозной `ID-123` или проектный `DEV-12` вместо UUID.
+- **Работа с задачами по-человечески.** Названия досок и колонок, имена исполнителей, номера
+  задач и даты вместо UUID и меток времени. Перенос карточки сам проходит цепочку Workflow.
+- **Весь API.** 65 операций в 10 доменных инструментах плюс справочный `yougile_help`.
+- **Задачи по номеру.** Сквозной `ID-123` или проектный `DEV-12`.
 - **Общий лимит запросов.** YouGile пропускает 50 запросов в минуту на всю компанию, включая
   тех, кто работает в интерфейсе. Сервер держит лимит сам: один счётчик на все сессии,
   запущенные на компьютере. При ответе 429 все сессии ждут вместе.
@@ -78,10 +85,28 @@ Claude Desktop, Cursor и другие клиенты — запись в `mcpSe
 YOUGILE_API_KEY=ваш_ключ uvx yougile-mcp check
 ```
 
-Покажет пользователя и компанию, сколько проектов, досок и колонок видно, действующие права
-и найденные файлы настроек. Проверка тратит 5 запросов.
+Покажет версию, пользователя и компанию, сколько проектов, досок и колонок видно, действующие
+права, часовой пояс и найденные файлы настроек. Проверка тратит 5 запросов.
 
-### Инструменты
+### Инструменты для задач
+
+Принимают названия и номера, показывают имена и даты. Для повседневной работы начинайте с них.
+
+| инструмент | что умеет |
+|---|---|
+| `yougile_overview` | проекты → доски → колонки в порядке экрана, цепочки Workflow, умолчания и права |
+| `yougile_find_tasks` | поиск по проекту, доске, колонке, исполнителю (имя, почта или `me`), словам из названия или номеру; по умолчанию только открытые |
+| `yougile_task` | карточка: где лежит, исполнители, срок, часы, чек-листы, стикеры по названиям, описание, последние сообщения |
+| `yougile_create_task` | создать: доска и колонка по названию, исполнители по имени или почте, срок датой, план часов, чек-лист, цвет |
+| `yougile_update_task` | изменить поля, выполнить, архивировать, добавить или снять исполнителей, отметить пункты чек-листа, убрать срок |
+| `yougile_move_task` | перенести в другую колонку; на досках с Workflow проходит все промежуточные колонки |
+| `yougile_log_time` | прибавить часы к факту, не трогая план |
+| `yougile_task_chat` | последние сообщения с именами авторов, отправка сообщения |
+
+Даты пишутся как `2026-09-30` или `30.09.2026`, со временем — `2026-09-30 18:00`. Дата без
+времени сохраняется как полночь по часовому поясу компании — так же, как в интерфейсе YouGile.
+
+### Доменные инструменты — весь API
 
 | инструмент | что умеет |
 |---|---|
@@ -118,17 +143,23 @@ YOUGILE_API_KEY=ваш_ключ uvx yougile-mcp check
   "projects": ["Разработка"],
   "confirm_projects": ["Клиенты"],
   "deny": ["tasks.delete", "users.*"],
+  "workflows": {
+    "Клиенты / Сайт": ["Очередь", "В работе", "На проверке", "Готово"]
+  },
+  "timezone": "Europe/Moscow",
   "instructions": "В задачах клиентских проектов пишите клиентским языком."
 }
 ```
 
 | поле | смысл |
 |---|---|
-| `project`, `board` | значения по умолчанию, сообщаются модели |
+| `project`, `board` | значения по умолчанию: где искать и куда создавать задачи |
 | `role` | `reader` — только чтение; `member` — плюс задачи, сообщения, файлы; `admin` (по умолчанию) — всё, включая проекты, доски, колонки, сотрудников, роли и вебхуки |
 | `projects` | работать только с этими проектами (названия или id). Чужие объекты скрыты из списков, запись в них запрещена |
 | `confirm_projects` | запись в эти проекты — только после подтверждения человеком |
 | `deny` | запрещённые операции, можно маской: `users.*`. Удаление через `deleted: true` считается отдельной операцией `<инструмент>.delete`, например `tasks.delete` |
+| `workflows` | цепочки колонок для досок с расширением Workflow: YouGile не отдаёт их по API. Ключ — `"Проект / Доска"`. Первая колонка цепочки — колонка по умолчанию для новых задач |
+| `timezone` | часовой пояс компании для дат, по умолчанию `Europe/Moscow` |
 | `instructions` | правила вашей компании для модели, строка или список строк |
 
 Эти права только сужают права YouGile: ключ всегда действует с правами пользователя,
@@ -136,7 +167,8 @@ YOUGILE_API_KEY=ваш_ключ uvx yougile-mcp check
 
 **Как работает подтверждение.** Если клиент умеет показывать запросы пользователю
 (MCP elicitation), человек подтверждает запись в окне клиента, и модель не может обойти этот
-шаг. Если клиент так не умеет, инструмент возвращает `confirmation_required` с текстом того, что
+шаг. Одно действие спрашивает подтверждение один раз, даже если делает несколько записей.
+Если клиент так не умеет, инструмент возвращает `confirmation_required` с текстом того, что
 будет записано. Модель должна показать его пользователю и повторить вызов с `confirm=true`
 только после его явного согласия.
 
@@ -147,25 +179,39 @@ YOUGILE_API_KEY=ваш_ключ uvx yougile-mcp check
 | `YOUGILE_API_KEY` | — | ключ API, обязателен для работы сервера |
 | `YOUGILE_BASE_URL` | `https://ru.yougile.com` | адрес YouGile, например вашего коробочного сервера |
 | `YOUGILE_RATE_LIMIT` | `45` | запросов в минуту на один ключ; `0` отключает ограничитель |
+| `YOUGILE_TIMEZONE` | `Europe/Moscow` | часовой пояс компании, перекрывает `timezone` из файла |
 | `YOUGILE_CONFIG` | — | явный путь к файлу настроек вместо поиска `.yougile.json` |
 | `YOUGILE_MCP_STATE_DIR` | папка кэша ОС | где лежит общий счётчик лимита |
 | `YOUGILE_MCP_LOG_LEVEL` | `WARNING` | уровень логов; логи идут в stderr |
 
 ### Советы
 
-- Чек-листы и стикеры при изменении задачи заменяются целиком: прочитайте задачу, поправьте,
-  запишите обратно.
-- Сроки передаются в миллисекундах Unix, часы `timeTracking` — в часах.
+- Структура компании (проекты, доски, колонки, сотрудники, стикеры) кэшируется на 5 минут —
+  повторные вызовы не тратят лимит.
+- В доменных инструментах чек-листы и стикеры при изменении задачи заменяются целиком;
+  `yougile_update_task` делает это сам.
 - Удалённые объекты скрыты из списков; чтобы их найти, добавьте `includeDeleted: true`.
 - Списки отдают до 50 объектов, можно до 1000 через `limit`. Одним большим запросом лимит
   расходуется бережнее, чем многими маленькими.
+
+### Версии
+
+- Актуальная версия — на бейдже вверху и на странице
+  [Releases](https://github.com/indalo-tech/yougile-mcp/releases/latest); что изменилось —
+  в [CHANGELOG.md](CHANGELOG.md).
+- Установленную версию показывают `yougile-mcp --version` и `yougile-mcp check`.
+- Номера по [SemVer](https://semver.org/lang/ru/): до 1.0 новые возможности поднимают вторую
+  цифру, исправления — третью.
+- Поставить конкретную версию:
+  `uvx --from git+https://github.com/indalo-tech/yougile-mcp@v0.2.0 yougile-mcp`.
 
 ### Как это устроено
 
 Каталог операций собран из официальной спецификации YouGile (`https://ru.yougile.com/api-json`),
 её снимок лежит в пакете. Каждая операция отнесена к инструменту и уровню доступа: `read`,
-`write` или `admin`. Тесты не дадут выпустить версию, в которой новая операция API осталась
-без инструмента, а CI каждый раз сверяет снимок с опубликованной спецификацией.
+`write` или `admin`. Инструменты для задач вызывают те же операции, поэтому права и
+подтверждения действуют одинаково. Тесты не дадут выпустить версию, в которой новая операция
+API осталась без инструмента, а CI каждый раз сверяет снимок с опубликованной спецификацией.
 
 ### Разработка
 
@@ -177,6 +223,11 @@ uv run --no-project python scripts/sync_spec.py   # обновить снимо�
 ```
 
 Запуск по HTTP для отладки: `uv run yougile-mcp serve --transport http --port 8000`.
+
+**Выпуск версии.** Поменяйте `__version__` в `src/yougile_mcp/__init__.py`, перенесите записи
+из `[Unreleased]` в новый раздел `CHANGELOG.md` (на двух языках), закоммитьте и отправьте тег:
+`git tag v0.3.0 && git push origin v0.3.0`. Workflow проверит, что тег совпадает с версией,
+прогонит тесты, соберёт пакет и опубликует GitHub Release с описанием из `CHANGELOG.md`.
 
 ### Лицензия
 
@@ -191,9 +242,10 @@ tasks, boards, columns, chats, employees and stickers, on top of the official RE
 
 ### Features
 
-- **The whole API.** 65 operations in 10 tools, plus the `yougile_help` reference tool.
-- **Tasks by number.** Use the company-wide `ID-123` or the project one like `DEV-12`
-  instead of UUIDs.
+- **Task work in human terms.** Board and column names, assignee names, task numbers and
+  dates instead of UUIDs and timestamps. Moving a card walks the Workflow chain by itself.
+- **The whole API.** 65 operations in 10 domain tools, plus the `yougile_help` reference tool.
+- **Tasks by number.** The company-wide `ID-123` or the project one like `DEV-12`.
 - **A shared rate limit.** YouGile allows 50 requests per minute per company, people in the
   web UI included. The server enforces the limit itself with one counter shared by every
   session running on the machine, and all of them back off together on HTTP 429.
@@ -259,10 +311,28 @@ Claude Desktop, Cursor and other clients — an `mcpServers` entry:
 YOUGILE_API_KEY=your_key uvx yougile-mcp check
 ```
 
-Shows the user and company, how many projects, boards and columns are visible, the effective
-permissions and the config files found. The check costs 5 requests.
+Shows the version, user and company, how many projects, boards and columns are visible, the
+effective permissions, the time zone and the config files found. The check costs 5 requests.
 
-### Tools
+### Task tools
+
+They take names and numbers and show names and dates. Start with them for everyday work.
+
+| tool | what it does |
+|---|---|
+| `yougile_overview` | projects → boards → columns in screen order, Workflow chains, defaults and permissions |
+| `yougile_find_tasks` | search by project, board, column, assignee (name, email or `me`), title words or number; open tasks by default |
+| `yougile_task` | the card: location, assignees, deadline, hours, checklists, stickers by name, description, latest messages |
+| `yougile_create_task` | create: board and column by name, assignees by name or email, deadline as a date, planned hours, checklist, color |
+| `yougile_update_task` | edit fields, complete, archive, add or remove assignees, check checklist items, remove the deadline |
+| `yougile_move_task` | move to another column; on Workflow boards it passes every intermediate column |
+| `yougile_log_time` | add worked hours, keeping the plan |
+| `yougile_task_chat` | latest messages with author names, post a message |
+
+Dates are written as `2026-09-30` or `30.09.2026`, with time as `2026-09-30 18:00`. A date
+without time is stored as midnight in the company time zone, just as the YouGile UI does.
+
+### Domain tools — the whole API
 
 | tool | what it does |
 |---|---|
@@ -299,26 +369,33 @@ shared ones. `YOUGILE_CONFIG` points to a file explicitly.
   "projects": ["Development"],
   "confirm_projects": ["Clients"],
   "deny": ["tasks.delete", "users.*"],
+  "workflows": {
+    "Clients / Website": ["Queue", "In progress", "Review", "Done"]
+  },
+  "timezone": "Europe/Moscow",
   "instructions": "Use client-friendly language in client projects."
 }
 ```
 
 | field | meaning |
 |---|---|
-| `project`, `board` | defaults, passed on to the model |
+| `project`, `board` | defaults: where to search and where to create tasks |
 | `role` | `reader` — read only; `member` — plus tasks, messages, files; `admin` (default) — everything, including projects, boards, columns, employees, roles and webhooks |
 | `projects` | work only with these projects (names or ids). Other objects are hidden from lists and cannot be written |
 | `confirm_projects` | writes into these projects need a human confirmation |
 | `deny` | denied operations, masks allowed: `users.*`. Deleting via `deleted: true` counts as a separate `<tool>.delete` operation, e.g. `tasks.delete` |
+| `workflows` | column chains for boards using the Workflow extension, which YouGile does not expose via the API. Key: `"Project / Board"`. The first column of a chain is the default for new tasks |
+| `timezone` | the company time zone for dates, default `Europe/Moscow` |
 | `instructions` | your company's rules for the model, a string or a list of strings |
 
 These permissions only narrow YouGile's own: the key always acts with the rights of the user
 who issued it.
 
 **How confirmation works.** If the client can prompt the user (MCP elicitation), the person
-confirms the write in the client's UI and the model cannot skip that step. Otherwise the tool
-returns `confirmation_required` with exactly what would be written; the model has to show it
-to the user and repeat the call with `confirm=true` only after explicit consent.
+confirms the write in the client's UI and the model cannot skip that step. One action asks
+once, even when it performs several writes. Otherwise the tool returns `confirmation_required`
+with exactly what would be written; the model has to show it to the user and repeat the call
+with `confirm=true` only after explicit consent.
 
 ### Environment variables
 
@@ -327,24 +404,39 @@ to the user and repeat the call with `confirm=true` only after explicit consent.
 | `YOUGILE_API_KEY` | — | API key, required to run the server |
 | `YOUGILE_BASE_URL` | `https://ru.yougile.com` | YouGile address, e.g. your on-premise server |
 | `YOUGILE_RATE_LIMIT` | `45` | requests per minute per key; `0` disables the limiter |
+| `YOUGILE_TIMEZONE` | `Europe/Moscow` | company time zone, overrides `timezone` from the file |
 | `YOUGILE_CONFIG` | — | explicit config file instead of looking for `.yougile.json` |
 | `YOUGILE_MCP_STATE_DIR` | OS cache dir | where the shared rate-limit counter lives |
 | `YOUGILE_MCP_LOG_LEVEL` | `WARNING` | log level; logs go to stderr |
 
 ### Tips
 
-- Checklists and stickers are replaced as a whole on update: read the task, modify, write back.
-- Deadlines are Unix timestamps in milliseconds; `timeTracking` values are hours.
+- The company structure (projects, boards, columns, employees, stickers) is cached for
+  5 minutes, so repeated calls do not spend the limit.
+- In domain tools checklists and stickers are replaced as a whole on update;
+  `yougile_update_task` handles that for you.
 - Deleted objects are hidden from lists; add `includeDeleted: true` to find them.
 - Lists return up to 50 objects, up to 1000 with `limit`. One large request spends the limit
   more wisely than many small ones.
+
+### Versions
+
+- The current version is on the badge above and on the
+  [Releases](https://github.com/indalo-tech/yougile-mcp/releases/latest) page; what changed is
+  in [CHANGELOG.md](CHANGELOG.md).
+- `yougile-mcp --version` and `yougile-mcp check` show the installed version.
+- Numbers follow [SemVer](https://semver.org/): before 1.0, new features bump the second
+  number and fixes the third.
+- Install a specific version:
+  `uvx --from git+https://github.com/indalo-tech/yougile-mcp@v0.2.0 yougile-mcp`.
 
 ### How it works
 
 The operation catalog is built from YouGile's official spec (`https://ru.yougile.com/api-json`);
 a snapshot ships with the package. Each operation is mapped to a tool and an access level:
-`read`, `write` or `admin`. Tests refuse a release in which a new API operation is left without
-a tool, and CI compares the snapshot with the published spec on every run.
+`read`, `write` or `admin`. Task tools call the same operations, so permissions and
+confirmations apply identically. Tests refuse a release in which a new API operation is left
+without a tool, and CI compares the snapshot with the published spec on every run.
 
 ### Development
 
@@ -356,6 +448,12 @@ uv run --no-project python scripts/sync_spec.py   # refresh the spec snapshot
 ```
 
 HTTP transport for debugging: `uv run yougile-mcp serve --transport http --port 8000`.
+
+**Releasing.** Bump `__version__` in `src/yougile_mcp/__init__.py`, move the `[Unreleased]`
+entries into a new `CHANGELOG.md` section (in both languages), commit and push a tag:
+`git tag v0.3.0 && git push origin v0.3.0`. The workflow checks that the tag matches the
+version, runs the tests, builds the package and publishes a GitHub Release with the notes from
+`CHANGELOG.md`.
 
 ### License
 

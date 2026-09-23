@@ -133,6 +133,7 @@ async def _check(settings: Settings, config: Any) -> None:
         company = await rt.client.request("GET", "/companies")
         structure = await rt.directory.structure()
     admin = " (admin)" if me.get("isAdmin") else ""
+    print(f"Version:  yougile-mcp {__version__}")
     print(f"User:     {me.get('realName') or '-'} <{me.get('email')}>{admin}")
     print(f"Company:  {company.get('title')} ({company.get('id')})")
     print(
@@ -140,6 +141,7 @@ async def _check(settings: Settings, config: Any) -> None:
         f"{len(structure.columns)} columns"
     )
     print(f"Policy:   {rt.policy.summary()}")
+    print(f"Timezone: {config.timezone}")
     print(f"Config:   {', '.join(config.sources) or 'none (defaults)'}")
     for warning in config.warnings:
         print(f"Warning:  {warning}")

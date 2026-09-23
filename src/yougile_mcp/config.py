@@ -12,6 +12,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .client import DEFAULT_BASE_URL, normalize_base_url
 from .ratelimit import DEFAULT_LIMIT
@@ -30,11 +31,20 @@ KNOWN_KEYS = {
     "deny",
     "workflows",
     "instructions",
+    "timezone",
 }
+DEFAULT_TIMEZONE = "Europe/Moscow"
 
 
 class ConfigError(ValueError):
     pass
+
+
+def _zone(name: str, source: str) -> ZoneInfo:
+    try:
+        return ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise ConfigError(f"{source}: unknown time zone {name!r} (use e.g. Europe/Moscow)") from exc
 
 
 def default_state_dir() -> Path:
@@ -82,8 +92,13 @@ class WorkspaceConfig:
     deny: list[str] = field(default_factory=list)
     workflows: dict[str, list[str]] = field(default_factory=dict)
     instructions: str = ""
+    timezone: str = DEFAULT_TIMEZONE
     sources: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+
+    @property
+    def tz(self) -> ZoneInfo:
+        return ZoneInfo(self.timezone)
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any], source: str = "<dict>") -> WorkspaceConfig:
@@ -128,6 +143,10 @@ class WorkspaceConfig:
             if isinstance(text, list):
                 text = "\n".join(str(t) for t in text)
             self.instructions = str(text or "")
+        if "timezone" in data:
+            name = _opt_str(data["timezone"], "timezone", source) or DEFAULT_TIMEZONE
+            _zone(name, source)
+            self.timezone = name
         self.sources.append(source)
 
 
@@ -178,4 +197,7 @@ def load_workspace_config(
         path = find_repo_config((cwd or Path.cwd()).resolve())
     if path is not None and path != global_file:
         cfg.merge(_read_json(path), str(path))
+    if tz_name := env.get("YOUGILE_TIMEZONE"):
+        _zone(tz_name, "YOUGILE_TIMEZONE")
+        cfg.timezone = tz_name
     return cfg

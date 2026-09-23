@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 from collections.abc import Callable
 from typing import Any
@@ -13,6 +14,8 @@ from yougile_mcp.directory import Directory
 from yougile_mcp.policy import Policy
 from yougile_mcp.runtime import Runtime
 
+MSK_2026_09_30 = 1790715600000  # 2026-09-30 00:00 Europe/Moscow
+
 PROJECTS = [
     {"id": "p-int", "title": "Разработка"},
     {"id": "p-cli", "title": "Клиенты"},
@@ -24,8 +27,19 @@ BOARDS = [
 COLUMNS = [
     {"id": "c-int-queue", "title": "Очередь", "boardId": "b-hub-int"},
     {"id": "c-int-work", "title": "В работе", "boardId": "b-hub-int"},
+    {"id": "c-int-review", "title": "На проверке", "boardId": "b-hub-int"},
+    {"id": "c-int-done", "title": "Готово", "boardId": "b-hub-int"},
     {"id": "c-cli-queue", "title": "Очередь", "boardId": "b-hub-cli"},
     {"id": "c-cli-work", "title": "В работе", "boardId": "b-hub-cli"},
+]
+# The fake enforces a Workflow chain on the internal board: only neighbouring moves pass.
+WORKFLOW = {"b-hub-int": ["c-int-queue", "c-int-work", "c-int-review", "c-int-done"]}
+USERS = [
+    {"id": "u-me", "realName": "Анна Смирнова", "email": "anna@example.com", "isAdmin": True},
+    {"id": "u-ivan", "realName": "Иван Петров", "email": "ivan@example.com"},
+]
+STRING_STICKERS = [
+    {"id": "st-prio", "name": "Приоритет", "states": [{"id": "s-high", "name": "Высокий"}]}
 ]
 TASKS = {
     "t-int": {
@@ -33,8 +47,39 @@ TASKS = {
         "title": "Internal",
         "columnId": "c-int-queue",
         "idTaskCommon": "ID-1",
+        "idTaskProject": "DEV-1",
+        "timestamp": MSK_2026_09_30 - 86_400_000,
+        "createdBy": "u-me",
+        "assigned": ["u-ivan"],
+        "deadline": {"deadline": MSK_2026_09_30, "startDate": MSK_2026_09_30},
+        "timeTracking": {"plan": 5, "work": 3},
+        "checklists": [
+            {
+                "title": "Шаги",
+                "items": [
+                    {"title": "Написать код", "isCompleted": False},
+                    {"title": "Проверить", "isCompleted": False},
+                ],
+            }
+        ],
+        "stickers": {"st-prio": "s-high"},
+        "description": "<p>Первая строка</p><p>Вторая &amp; последняя</p>",
+    },
+    "t-done": {
+        "id": "t-done",
+        "title": "Finished work",
+        "columnId": "c-int-done",
+        "idTaskCommon": "ID-3",
+        "completed": True,
     },
     "t-cli": {"id": "t-cli", "title": "Client", "columnId": "c-cli-queue", "idTaskCommon": "ID-2"},
+}
+MESSAGES = {
+    "t-int": [
+        {"id": 1000, "fromUserId": "u-ivan", "text": "Начал"},
+        {"id": 2000, "fromUserId": "u-me", "text": "Ок"},
+        {"id": 3000, "fromUserId": "u-ivan", "text": "Готово к проверке"},
+    ]
 }
 
 
@@ -45,49 +90,107 @@ def page(items: list[dict]) -> dict:
     }
 
 
+def ok(data: Any, status: int = 200) -> httpx2.Response:
+    return httpx2.Response(status, json=data)
+
+
 class FakeYouGile:
-    """Minimal in-memory YouGile API; records every request."""
+    """Small in-memory YouGile API with mutable tasks and chats; records every request."""
 
     def __init__(self) -> None:
         self.requests: list[httpx2.Request] = []
         self.overrides: dict[tuple[str, str], Callable[[httpx2.Request], httpx2.Response]] = {}
+        self.tasks = copy.deepcopy(TASKS)
+        self.messages = copy.deepcopy(MESSAGES)
 
     def body(self, index: int = -1) -> Any:
         return json.loads(self.requests[index].content or b"null")
 
+    def bodies(self, method: str, path: str) -> list[Any]:
+        return [
+            json.loads(r.content or b"null")
+            for r in self.requests
+            if r.method == method and r.url.path == path
+        ]
+
     def calls(self, method: str, path: str) -> int:
         return sum(1 for r in self.requests if r.method == method and r.url.path == path)
+
+    def find_task(self, ref: str) -> dict | None:
+        for task in self.tasks.values():
+            if ref in (task["id"], task.get("idTaskCommon"), task.get("idTaskProject")):
+                return task
+        return None
 
     def __call__(self, request: httpx2.Request) -> httpx2.Response:
         self.requests.append(request)
         path = request.url.path.removeprefix("/api-v2")
-        key = (request.method, path)
-        if key in self.overrides:
-            return self.overrides[key](request)
-        if request.method == "GET":
-            if path == "/projects":
-                return httpx2.Response(200, json=page(PROJECTS))
-            if path == "/boards":
-                return httpx2.Response(200, json=page(BOARDS))
-            if path == "/columns":
-                return httpx2.Response(200, json=page(COLUMNS))
+        method = request.method
+        if (method, path) in self.overrides:
+            return self.overrides[(method, path)](request)
+        parts = path.strip("/").split("/")
+        body = json.loads(request.content) if request.content else None
+
+        if method == "GET":
+            static = {
+                "/projects": PROJECTS,
+                "/boards": BOARDS,
+                "/columns": COLUMNS,
+                "/users": USERS,
+                "/string-stickers": STRING_STICKERS,
+                "/sprint-stickers": [],
+            }
+            if path in static:
+                return ok(page(static[path]))
+            if path == "/users/me":
+                return ok(USERS[0])
             if path in ("/task-list", "/tasks"):
-                return httpx2.Response(200, json=page(list(TASKS.values())))
-            if path.startswith("/tasks/"):
-                task_id = path.split("/")[2]
-                for task in TASKS.values():
-                    if task_id in (task["id"], task["idTaskCommon"]):
-                        return httpx2.Response(200, json=task)
-                return httpx2.Response(404, json={"error": "Not found"})
-            if path.startswith("/chats/"):
-                return httpx2.Response(200, json=page([{"id": 1, "text": "hi"}]))
-        if request.method == "PUT" and path.startswith("/tasks/"):
-            return httpx2.Response(200, json={"id": path.split("/")[2]})
-        if request.method == "POST" and path.startswith("/chats/"):
-            return httpx2.Response(201, json={"id": 123})
-        if request.method == "POST" and path == "/tasks":
-            return httpx2.Response(201, json={"id": "t-new"})
-        return httpx2.Response(404, json={"error": f"no fake route for {request.method} {path}"})
+                column = request.url.params.get("columnId")
+                assignee = request.url.params.get("assignedTo")
+                items = [
+                    t
+                    for t in self.tasks.values()
+                    if (not column or t.get("columnId") == column)
+                    and (not assignee or assignee in (t.get("assigned") or []))
+                ]
+                return ok(page(items))
+            if parts[0] == "tasks" and len(parts) == 2:
+                task = self.find_task(parts[1])
+                return ok(task) if task else ok({"error": "Not found"}, 404)
+            if parts[0] == "chats":
+                if self.find_task(parts[1]) is None:
+                    return ok({"error": "Not found"}, 404)
+                return ok(page(self.messages.get(parts[1], [])))
+
+        if method == "PUT" and parts[0] == "tasks" and len(parts) == 2:
+            task = self.find_task(parts[1])
+            if task is None:
+                return ok({"error": "Not found"}, 404)
+            new_column = (body or {}).get("columnId")
+            if new_column and new_column != task.get("columnId"):
+                board = next(c["boardId"] for c in COLUMNS if c["id"] == task["columnId"])
+                chain = WORKFLOW.get(board) or []
+                jump = new_column in chain and (
+                    abs(chain.index(new_column) - chain.index(task["columnId"])) != 1
+                )
+                if jump:
+                    return ok({"error": "Переход запрещён настройками Workflow"}, 400)
+            task.update(body or {})
+            return ok({"id": task["id"]})
+
+        if method == "POST" and path == "/tasks":
+            new = {"id": "t-new", "idTaskCommon": "ID-99", **(body or {})}
+            new.pop("idempotencyKey", None)
+            self.tasks["t-new"] = new
+            return ok({"id": "t-new"}, 201)
+        if method == "POST" and parts[0] == "chats" and parts[-1] == "messages":
+            chat = self.messages.setdefault(parts[1], [])
+            # A message id is its creation time in ms, so a new one is always the largest.
+            new_id = max((m["id"] for m in chat), default=0) + 1000
+            message = {"id": new_id, "fromUserId": "u-me", **(body or {})}
+            chat.append(message)
+            return ok({"id": message["id"]}, 201)
+        return ok({"error": f"no fake route for {method} {path}"}, 404)
 
 
 @pytest.fixture

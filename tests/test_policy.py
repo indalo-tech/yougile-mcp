@@ -58,7 +58,7 @@ async def test_allowlist_filters_lists_and_checks_single_results(make_runtime):
     rt = make_runtime(projects=["p-int"])
     prep, g = await guard(rt, "tasks.list", {})
     result = await g.apply(await prep.send(rt.client), rt.directory)
-    assert [t["id"] for t in result["content"]] == ["t-int"]
+    assert [t["id"] for t in result["content"]] == ["t-int", "t-done"]
     assert result["hidden_by_policy"] == 1
 
     prep, g = await guard(rt, "tasks.get", {"id": "ID-2"})

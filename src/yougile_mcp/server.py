@@ -1,47 +1,40 @@
-"""FastMCP server: one tool per API domain plus yougile_help."""
+"""FastMCP server: task-level tools, one tool per API domain, and yougile_help."""
 
 import contextlib
 import difflib
-import json
 from typing import Annotated, Any, Literal
 
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.tools import Tool
-from mcp.types import (
-    ElicitRequest,
-    ElicitRequestFormParams,
-    InputRequiredResult,
-    ToolAnnotations,
-)
+from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from . import __version__, runtime
+from . import __version__, runtime, smart
+from .caller import Caller, tool_errors
 from .catalog import TOOLS, Operation, by_tool, find
-from .client import YouGileError
-from .directory import Ambiguous, NotFound
-from .dispatch import ParamError, Prepared, describe, error_hint, prepare
-from .policy import PolicyError
-
-MODERN_PROTOCOL = "2026-07-28"
-STRUCTURE_TOOLS = {"projects", "boards", "columns"}
+from .dispatch import describe
 
 BASE_INSTRUCTIONS = """\
-YouGile (task tracker) REST API v2. Tools are grouped by domain (yougile_tasks, yougile_chats, \
-yougile_boards, yougile_columns, yougile_projects, yougile_users, yougile_stickers, \
-yougile_company, yougile_files, yougile_crm). Each takes `operation` and one flat `params` \
-object holding path params, query params and body fields together. Before a write you have \
-not done yet in this session, call yougile_help("tool.operation") for the exact fields.
+YouGile (task tracker). Two kinds of tools:
+- Task-level tools take names and numbers instead of UUIDs: yougile_overview (projects, \
+boards, columns), yougile_find_tasks, yougile_task (open a card), yougile_create_task, \
+yougile_update_task, yougile_move_task (follows Workflow chains), yougile_log_time, \
+yougile_task_chat. Prefer them for everyday work.
+- Domain tools cover the whole REST API v2 (yougile_tasks, yougile_chats, yougile_boards, \
+yougile_columns, yougile_projects, yougile_users, yougile_stickers, yougile_company, \
+yougile_files, yougile_crm). Each takes `operation` and one flat `params` object holding path \
+params, query params and body fields together. Before a write you have not done yet in this \
+session, call yougile_help("tool.operation") for the exact fields.
 
 Facts:
-- A task can be addressed by its number wherever a task id is expected: the company-wide \
+- A task can be addressed by its number wherever a task is expected: the company-wide \
 ID-123 or the project one like DEV-12.
-- A task's chat id equals the task id (yougile_chats with chatId = task id).
+- A task's chat id equals the task id.
 - Deleting is soft: update with deleted=true; lists hide deleted objects unless includeDeleted=true.
-- Lists return {paging, content}; default limit 50, max 1000; paging.next means more pages.
-- Dates (deadline, sprint dates) are Unix timestamps in milliseconds; \
-timeTracking plan/work are hours.
-- Checklists and stickers are replaced as a whole on update: read, modify, write back.
+- Raw API dates are Unix timestamps in milliseconds; task-level tools take and show dates \
+as YYYY-MM-DD [HH:MM] in the company time zone. Hours are hours.
+- Checklists and stickers are replaced as a whole on raw updates: read, modify, write back.
 - The API allows 50 requests per minute per company, shared with all colleagues: prefer \
 filters and larger limits over many small calls.
 """
@@ -57,75 +50,13 @@ def instructions(rt: runtime.Runtime | None) -> str:
             f"\nWorkspace defaults: project={rt.config.project or '-'}, "
             f"board={rt.config.board or '-'}."
         )
+    text += f"\nCompany time zone: {rt.config.timezone}."
     if rt.config.instructions:
         text += "\n\nCompany rules:\n" + rt.config.instructions.strip()
     return text
 
 
-# ---------- confirmation ----------
-
-
-def _client_can_elicit(ctx: Context) -> bool:
-    try:
-        caps = ctx.session.client_capabilities
-    except Exception:  # noqa: BLE001 - no session: no elicitation
-        return False
-    return bool(caps and caps.elicitation is not None)
-
-
-def _is_modern(ctx: Context) -> bool:
-    rc = ctx.request_context
-    return bool(rc is not None and str(getattr(rc, "protocol_version", "")) >= MODERN_PROTOCOL)
-
-
-def _preview(prep: Prepared) -> str:
-    target = ", ".join(f"{k}={v}" for k, v in prep.path_values.items())
-    body = json.dumps(prep.body or {}, ensure_ascii=False)
-    if len(body) > 600:
-        body = body[:600] + "…"
-    return f"{prep.op.full_name}({target}) {body}"
-
-
-async def _confirm(
-    ctx: Context | None, prep: Prepared, titles: list[str], confirm_flag: bool
-) -> bool | InputRequiredResult:
-    message = (
-        f"Запись в проект «{', '.join(titles)}», который видят внешние участники. "
-        f"Подтвердить?\n{_preview(prep)}"
-    )
-    if ctx is not None and _client_can_elicit(ctx):
-        if _is_modern(ctx):
-            responses = ctx.input_responses
-            if responses is None:
-                params = ElicitRequestFormParams(
-                    message=message,
-                    requested_schema={
-                        "type": "object",
-                        "properties": {"value": {"type": "boolean", "title": "Подтверждаю запись"}},
-                        "required": ["value"],
-                    },
-                )
-                return InputRequiredResult(
-                    result_type="input_required",
-                    input_requests={
-                        "confirm": ElicitRequest(method="elicitation/create", params=params)
-                    },
-                )
-            answer = responses.get("confirm")
-            content = getattr(answer, "content", None) or {}
-            return getattr(answer, "action", None) == "accept" and bool(content.get("value"))
-        result = await ctx.elicit(message, response_type=bool)
-        return result.action == "accept" and bool(getattr(result, "data", False))
-    if confirm_flag:
-        return True
-    raise ToolError(
-        "confirmation_required: this writes into a project visible to external people "
-        f"({', '.join(titles)}). Show the user exactly what will be written:\n{_preview(prep)}\n"
-        "Repeat the call with confirm=true only after the user explicitly agrees."
-    )
-
-
-# ---------- execution ----------
+# ---------- domain tools ----------
 
 
 def _operation(tool: str, operation: str) -> Operation:
@@ -140,40 +71,14 @@ def _operation(tool: str, operation: str) -> Operation:
     )
 
 
+@tool_errors
 async def execute(
     tool: str, operation: str, params: dict[str, Any] | None, confirm: bool, ctx: Context | None
 ) -> Any:
-    rt = runtime.current()
     op = _operation(tool, operation)
-    try:
-        prep = prepare(op, params)
-        rt.policy.check_static(op, prep.body)
-        guard = await rt.policy.guard(op, prep, rt.client, rt.directory)
-        if guard.confirm_titles:
-            decision = await _confirm(ctx, prep, guard.confirm_titles, confirm)
-            if isinstance(decision, InputRequiredResult):
-                return decision
-            if not decision:
-                return {"cancelled": True, "reason": "the user did not confirm the write"}
-        result = await prep.send(rt.client)
-        result = await guard.apply(result, rt.directory)
-    except (ParamError, PolicyError, NotFound, Ambiguous) as exc:
-        raise ToolError(str(exc)) from exc
-    except YouGileError as exc:
-        detail = f"YouGile API error {exc.status}: {exc.message}" if exc.status else exc.message
-        if exc.status in (400, 422):
-            detail += f" (hint: {error_hint(op)})"
-        elif exc.status == 403:
-            detail += " (the API key's owner lacks rights for this in YouGile)"
-        elif exc.status == 404:
-            detail += " (not found, or not visible to the API key's owner)"
-        raise ToolError(detail) from exc
-    if op.access != "read" and op.tool in STRUCTURE_TOOLS:
-        rt.directory.invalidate()
+    result = await Caller(ctx, confirm).call(op.full_name, params)
     return {"ok": True} if result in (None, "", {}) else result
 
-
-# ---------- tool construction ----------
 
 PARAMS_DOC = (
     "Flat object with path params, query params and body fields, "
@@ -221,7 +126,7 @@ async def yougile_help(
         Field(description='"list" for everything, a tool name like "tasks", or "tasks.create"'),
     ] = "list",
 ) -> dict[str, Any]:
-    """Describe YouGile tools and operations: parameters, types, required fields, access level."""
+    """Describe YouGile domain tools and operations: parameters, types, required fields, access."""
     query = (operation or "list").strip().removeprefix("yougile_")
     tools = by_tool()
     if query in ("", "list", "all"):
@@ -251,6 +156,7 @@ async def yougile_help(
 
 def build_server(rt: runtime.Runtime | None = None) -> FastMCP:
     mcp = FastMCP(name="yougile", instructions=instructions(rt), version=__version__)
+    smart.register(mcp)
     for tool in TOOLS:
         mcp.add_tool(_domain_tool(tool))
     mcp.add_tool(

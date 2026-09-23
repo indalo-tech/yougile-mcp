@@ -20,7 +20,7 @@ def server_for(make_runtime):
 async def test_tools_are_listed_with_operation_enums(server_for):
     async with Client(server_for()) as client:
         tools = {t.name: t for t in await client.list_tools()}
-    assert len(tools) == 11
+    assert len(tools) == 19
     enum = tools["yougile_tasks"].input_schema["properties"]["operation"]["enum"]
     assert {"list", "get", "create", "update"} <= set(enum)
 
@@ -99,7 +99,7 @@ async def test_elicitation_is_used_when_client_supports_it(server_for, fake, app
     assert answers and "Клиенты" in answers[0]
     sent = fake.calls("POST", "/api-v2/chats/t-cli/messages")
     if approve:
-        assert sent == 1 and result.data == {"id": 123}
+        assert sent == 1 and "id" in result.data
     else:
         assert result.data["cancelled"] is True, "confirm=true must not bypass a real user prompt"
         assert sent == 0

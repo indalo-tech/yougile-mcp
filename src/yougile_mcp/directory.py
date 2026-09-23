@@ -134,6 +134,8 @@ class Directory:
         self.ttl = ttl
         self._structure: Structure | None = None
         self._users: tuple[float, list[dict]] | None = None
+        self._stickers: tuple[float, dict[str, dict]] | None = None
+        self._me: dict | None = None
         self._lock = asyncio.Lock()
 
     def invalidate(self) -> None:
@@ -170,8 +172,33 @@ class Directory:
             self._users = (now, await fetch_all(self.client, "/users"))
         return self._users[1]
 
+    async def users_by_id(self) -> dict[str, dict]:
+        return {u["id"]: u for u in await self.users()}
+
+    async def me(self) -> dict:
+        if self._me is None:
+            self._me = await self.client.request("GET", "/users/me")
+        return self._me
+
+    async def stickers(self) -> dict[str, dict]:
+        """``{sticker_id: {"name": ..., "states": {state_id: name}}}`` for all custom stickers."""
+        now = time.monotonic()
+        if self._stickers is None or now - self._stickers[0] > self.ttl:
+            table: dict[str, dict] = {}
+            for path in ("/string-stickers", "/sprint-stickers"):
+                for sticker in await fetch_all(self.client, path):
+                    states = {s["id"]: s.get("name", s["id"]) for s in sticker.get("states") or []}
+                    table[sticker["id"]] = {
+                        "name": sticker.get("name", sticker["id"]),
+                        "states": states,
+                    }
+            self._stickers = (now, table)
+        return self._stickers[1]
+
     async def find_user(self, ref: str) -> dict:
-        """By id, email, or (partial, case-insensitive) real name."""
+        """By id, email, "me", or (partial, case-insensitive) real name."""
+        if _norm(ref) in ("me", "я"):
+            return await self.me()
         users = await self.users()
         wanted = _norm(ref)
         for user in users:

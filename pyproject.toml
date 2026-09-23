@@ -1,6 +1,6 @@
 [project]
 name = "yougile-mcp"
-version = "0.1.0"
+dynamic = ["version"]  # single source: src/yougile_mcp/__init__.py
 description = "MCP server for YouGile: full REST API v2, names instead of UUIDs, shared rate limit, permissions"
 readme = "README.md"
 license = "MIT"
@@ -16,6 +16,7 @@ classifiers = [
 dependencies = [
     "fastmcp>=4.0.5,<5",
     "httpx2>=2.13",
+    "tzdata>=2025.2; sys_platform == 'win32'",  # Windows has no system time zone database
 ]
 
 [project.scripts]
@@ -24,6 +25,7 @@ yougile-mcp = "yougile_mcp.__main__:main"
 [project.urls]
 Homepage = "https://github.com/indalo-tech/yougile-mcp"
 Issues = "https://github.com/indalo-tech/yougile-mcp/issues"
+Changelog = "https://github.com/indalo-tech/yougile-mcp/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 dev = [
@@ -35,6 +37,9 @@ dev = [
 [build-system]
 requires = ["hatchling>=1.26"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/yougile_mcp/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/yougile_mcp"]
