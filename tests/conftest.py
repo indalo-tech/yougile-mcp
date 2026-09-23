@@ -72,6 +72,7 @@ TASKS = {
         "columnId": "c-int-done",
         "idTaskCommon": "ID-3",
         "completed": True,
+        "completedTimestamp": MSK_2026_09_30 - 2 * 86_400_000 + 15 * 3_600_000,  # 28.09 15:00
     },
     "t-cli": {"id": "t-cli", "title": "Client", "columnId": "c-cli-queue", "idTaskCommon": "ID-2"},
 }

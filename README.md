@@ -23,6 +23,7 @@ MCP-сервер, через который Claude и другие AI-ассис
   задач и даты вместо UUID и меток времени. Перенос карточки сам проходит цепочку Workflow.
 - **Весь API.** 65 операций в 10 доменных инструментах плюс справочный `yougile_help`.
 - **Задачи по номеру.** Сквозной `ID-123` или проектный `DEV-12`.
+- **Готовые сценарии.** Стендап, отчёт по часам, разбор очереди — одной командой.
 - **Общий лимит запросов.** YouGile пропускает 50 запросов в минуту на всю компанию, включая
   тех, кто работает в интерфейсе. Сервер держит лимит сам: один счётчик на все сессии,
   запущенные на компьютере. При ответе 429 все сессии ждут вместе.
@@ -96,7 +97,7 @@ YOUGILE_API_KEY=ваш_ключ uvx yougile-mcp check
 | инструмент | что умеет |
 |---|---|
 | `yougile_overview` | проекты → доски → колонки в порядке экрана, цепочки Workflow, умолчания и права |
-| `yougile_find_tasks` | поиск по проекту, доске, колонке, исполнителю (имя, почта или `me`), словам из названия или номеру; по умолчанию только открытые |
+| `yougile_find_tasks` | поиск по проекту, доске, колонке, исполнителю (имя, почта или `me`), словам из названия или номеру; по умолчанию только открытые. Выполненные за период — `completed_since` / `completed_until`; у выполненных видно время выполнения, у просроченных — `overdue` |
 | `yougile_task` | карточка: где лежит, исполнители, срок, часы, чек-листы, стикеры по названиям (стикеры типов, которых нет в API, — числа, свободный текст — отдельно по id), описание, последние сообщения |
 | `yougile_create_task` | создать: доска и колонка по названию, исполнители по имени или почте, срок датой, план часов, чек-лист, цвет |
 | `yougile_update_task` | изменить поля, выполнить, архивировать, добавить или снять исполнителей, отметить пункты чек-листа, убрать срок |
@@ -106,6 +107,22 @@ YOUGILE_API_KEY=ваш_ключ uvx yougile-mcp check
 
 Даты пишутся как `2026-09-30` или `30.09.2026`, со временем — `2026-09-30 18:00`. Дата без
 времени сохраняется как полночь по часовому поясу компании — так же, как в интерфейсе YouGile.
+
+### Готовые сценарии
+
+Промпты MCP: клиент показывает их как готовые команды. В Claude Code это
+`/mcp__yougile__standup` и т. п.; в других клиентах — в меню подключённого сервера, если клиент
+поддерживает промпты. Сценарий только пишет задание модели, работает она обычными инструментами —
+с теми же правами и лимитами.
+
+| промпт | что получится | параметры |
+|---|---|---|
+| `standup` | стендап: что сделано с прошлого рабочего дня, что в работе, блокеры и просрочка | `person` (по умолчанию вы), `project` |
+| `hours_report` | план и факт часов по задачам, выполненным за период, — по проектам и людям, перерасход, задачи без оценки; отдельно открытые задачи со списанными часами | `since`, `until` (по умолчанию эта неделя), `project`, `person` |
+| `triage` | разбор очереди: задачи без исполнителя, срока или оценки, просроченные, загрузка людей и предложения; изменения — только после вашего согласия | `board`, `column`, `project` |
+
+YouGile хранит часы только суммой по задаче, без дат списания, поэтому отчёт «за период» строится
+по задачам, выполненным в этот период.
 
 ### Доменные инструменты — весь API
 
@@ -203,7 +220,7 @@ YOUGILE_API_KEY=ваш_ключ uvx yougile-mcp check
 - Установленную версию показывают `yougile-mcp --version` и `yougile-mcp check`.
 - Номера по [SemVer](https://semver.org/lang/ru/): до 1.0 новые возможности поднимают вторую
   цифру, исправления — третью.
-- Поставить конкретную версию: `uvx yougile-mcp@0.3.1`. Последнюю, минуя кэш uv:
+- Поставить конкретную версию: `uvx yougile-mcp@0.4.0`. Последнюю, минуя кэш uv:
   `uvx yougile-mcp@latest`.
 
 ### Как это устроено
@@ -261,6 +278,7 @@ tasks, boards, columns, chats, employees and stickers, on top of the official RE
   dates instead of UUIDs and timestamps. Moving a card walks the Workflow chain by itself.
 - **The whole API.** 65 operations in 10 domain tools, plus the `yougile_help` reference tool.
 - **Tasks by number.** The company-wide `ID-123` or the project one like `DEV-12`.
+- **Ready-made scenarios.** Stand-up, hours report, queue triage — one command each.
 - **A shared rate limit.** YouGile allows 50 requests per minute per company, people in the
   web UI included. The server enforces the limit itself with one counter shared by every
   session running on the machine, and all of them back off together on HTTP 429.
@@ -334,7 +352,7 @@ They take names and numbers and show names and dates. Start with them for everyd
 | tool | what it does |
 |---|---|
 | `yougile_overview` | projects → boards → columns in screen order, Workflow chains, defaults and permissions |
-| `yougile_find_tasks` | search by project, board, column, assignee (name, email or `me`), title words or number; open tasks by default |
+| `yougile_find_tasks` | search by project, board, column, assignee (name, email or `me`), title words or number; open tasks by default. Tasks completed in a period — `completed_since` / `completed_until`; completed tasks show when, overdue ones show `overdue` |
 | `yougile_task` | the card: location, assignees, deadline, hours, checklists, stickers by name (sticker types the API does not describe — numbers, free text — separately, by id), description, latest messages |
 | `yougile_create_task` | create: board and column by name, assignees by name or email, deadline as a date, planned hours, checklist, color |
 | `yougile_update_task` | edit fields, complete, archive, add or remove assignees, check checklist items, remove the deadline |
@@ -344,6 +362,22 @@ They take names and numbers and show names and dates. Start with them for everyd
 
 Dates are written as `2026-09-30` or `30.09.2026`, with time as `2026-09-30 18:00`. A date
 without time is stored as midnight in the company time zone, just as the YouGile UI does.
+
+### Ready-made scenarios
+
+MCP prompts: clients show them as ready commands. In Claude Code they are
+`/mcp__yougile__standup` and so on; other clients list them in the connected server's menu if
+they support prompts. A scenario only writes the model's assignment; the model then works with
+the regular tools, under the same permissions and limits. The texts are in Russian.
+
+| prompt | what you get | parameters |
+|---|---|---|
+| `standup` | a stand-up: done since the previous working day, in progress, blockers and overdue tasks | `person` (you by default), `project` |
+| `hours_report` | planned vs worked hours of tasks completed in a period, by project and person, overruns, tasks without estimates; open tasks with logged hours separately | `since`, `until` (this week by default), `project`, `person` |
+| `triage` | queue triage: tasks without assignee, deadline or estimate, overdue ones, people's load and suggestions; changes only after your consent | `board`, `column`, `project` |
+
+YouGile keeps only a task's total hours, not when they were logged, so a report "for a period"
+is built from the tasks completed in that period.
 
 ### Domain tools — the whole API
 
@@ -440,7 +474,7 @@ with `confirm=true` only after explicit consent.
 - `yougile-mcp --version` and `yougile-mcp check` show the installed version.
 - Numbers follow [SemVer](https://semver.org/): before 1.0, new features bump the second
   number and fixes the third.
-- Install a specific version: `uvx yougile-mcp@0.3.1`; the newest one, bypassing uv's cache:
+- Install a specific version: `uvx yougile-mcp@0.4.0`; the newest one, bypassing uv's cache:
   `uvx yougile-mcp@latest`.
 
 ### How it works

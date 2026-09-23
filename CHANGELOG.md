@@ -5,6 +5,30 @@
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-09-24
+
+### Русский
+
+#### Добавлено
+- Готовые сценарии — промпты MCP: `standup` (стендап: сделано с прошлого рабочего дня, в работе,
+  блокеры), `hours_report` (план и факт часов за период по проектам и людям, перерасход) и
+  `triage` (разбор очереди с предложениями; изменения — только после согласия человека).
+  «Сегодня» и «прошлый рабочий день» считаются в часовом поясе компании.
+- `yougile_find_tasks`: фильтры `completed_since` / `completed_until` — задачи, выполненные за
+  период, новые сверху; у выполненных задач — `completed_at`, у просроченных открытых —
+  `overdue: true` (срок-дата действует до конца дня).
+
+### English
+
+#### Added
+- Ready-made scenarios as MCP prompts: `standup` (done since the previous working day, in
+  progress, blockers), `hours_report` (planned vs worked hours for a period by project and
+  person, overruns) and `triage` (queue triage with suggestions; changes only after a person's
+  consent). "Today" and "the previous working day" follow the company time zone.
+- `yougile_find_tasks`: `completed_since` / `completed_until` select tasks completed in a period,
+  newest first; completed tasks show `completed_at`, overdue open ones `overdue: true` (a
+  date-only deadline lasts until the end of that day).
+
 ## [0.3.1] — 2026-09-23
 
 ### Русский
@@ -148,7 +172,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.1.0...v0.2.0

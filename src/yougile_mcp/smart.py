@@ -6,7 +6,9 @@ exactly as for the domain tools.
 
 import copy
 import re
+from datetime import datetime, time, timedelta
 from typing import Annotated, Any, Literal
+from zoneinfo import ZoneInfo
 
 from fastmcp import Context, FastMCP
 from fastmcp.tools import Tool
@@ -139,6 +141,27 @@ def _color(value: str) -> str:
     return f"task-{name}"
 
 
+def _period(since: str | None, until: str | None, tz: ZoneInfo) -> tuple[int | None, int | None]:
+    """[from, before) in Unix ms; a date-only ``until`` covers that whole local day."""
+    start = parse_when(since, tz)[0] if since else None
+    end = None
+    if until:
+        ms, with_time = parse_when(until, tz)
+        if with_time:
+            end = ms + 1
+        else:
+            next_day = datetime.fromtimestamp(ms / 1000, tz).date() + timedelta(days=1)
+            end = int(datetime.combine(next_day, time(), tz).timestamp() * 1000)
+    return start, end
+
+
+def _completed_within(task: dict, start: int | None, end: int | None) -> bool:
+    done = task.get("completedTimestamp")
+    if not task.get("completed") or not done:
+        return False
+    return (start is None or done >= start) and (end is None or done < end)
+
+
 def _find_item(checklists: list[dict], text: str) -> dict:
     items = [item for cl in checklists for item in cl.get("items", [])]
     wanted = _norm(text)
@@ -213,13 +236,23 @@ async def yougile_find_tasks(
         Field(description='Default "open", or "any" when a column is given'),
     ] = None,
     include_archived: bool = False,
+    completed_since: Annotated[
+        str | None,
+        Field(description="Only tasks completed on or after this date (implies completed)"),
+    ] = None,
+    completed_until: Annotated[
+        str | None,
+        Field(description="Only tasks completed on or before this date (implies completed)"),
+    ] = None,
     limit: Annotated[int, Field(ge=1, le=200)] = 50,
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """Find tasks by project/board/column names, assignee and title words.
     Without a place, searches the workspace's default project if one is set, else the whole
-    company."""
+    company. Completed tasks show completed_at; open tasks past their deadline show
+    overdue: true. completed_since/completed_until select a period, newest first."""
     work = Work(ctx)
+    done_from, done_before = _period(completed_since, completed_until, work.tz)
     if text and TASK_NUMBER.match(text.strip()):
         task = await work.task(text)
         s = await work.structure()
@@ -265,7 +298,8 @@ async def yougile_find_tasks(
             wanted = set(columns)
             tasks = [t for t in tasks if t.get("columnId") in wanted]
 
-    status = status or ("any" if column else "open")
+    by_period = done_from is not None or done_before is not None
+    status = status or ("completed" if by_period else "any" if column else "open")
     words = _norm(text).split() if text else []
     selected = [
         t
@@ -273,12 +307,16 @@ async def yougile_find_tasks(
         if (include_archived or not t.get("archived"))
         and (status == "any" or (status == "completed") == bool(t.get("completed")))
         and all(w in _norm(t.get("title")) for w in words)
+        and (not by_period or _completed_within(t, done_from, done_before))
     ]
+    if by_period:
+        selected.sort(key=lambda t: t.get("completedTimestamp") or 0, reverse=True)
     users = await work.directory.users_by_id() if any(t.get("assigned") for t in selected) else {}
+    now = datetime.now(work.tz)
     return {
         "scope": scope,
         "count": len(selected),
-        "tasks": [task_summary(t, s, users, work.tz) for t in selected[:limit]],
+        "tasks": [task_summary(t, s, users, work.tz, now) for t in selected[:limit]],
         **({"shown": limit} if len(selected) > limit else {}),
         **({"truncated": True} if truncated else {}),
     }

@@ -12,7 +12,7 @@ from fastmcp.tools import Tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from . import __version__, runtime, smart
+from . import __version__, prompts, runtime, smart
 from .caller import Caller, tool_errors
 from .catalog import TOOLS, Operation, by_tool, find
 from .dispatch import describe
@@ -176,6 +176,7 @@ def build_server(
         **fastmcp_options,
     )
     smart.register(mcp)
+    prompts.register(mcp)
     for tool in TOOLS:
         mcp.add_tool(_domain_tool(tool))
     mcp.add_tool(

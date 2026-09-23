@@ -55,6 +55,22 @@ async def test_find_tasks_by_place_assignee_and_number(client_for, fake):
         assert [t["number"] for t in by_words["tasks"]] == ["ID-3"]
 
 
+async def test_find_completed_in_a_period_and_overdue(client_for, fake):
+    fake.tasks["t-int"]["deadline"] = {"deadline": 1577836800000}  # 2020-01-01, long past
+    fake.tasks["t-done"]["deadline"] = {"deadline": 1577836800000}
+    async with client_for() as c:
+        done = await call(c, "yougile_find_tasks", completed_since="2026-09-28")
+        assert [t["number"] for t in done["tasks"]] == ["ID-3"], "a period implies completed"
+        assert done["tasks"][0]["completed_at"] == "2026-09-28 15:00"
+        assert "overdue" not in done["tasks"][0], "a completed task is never overdue"
+        until = await call(c, "yougile_find_tasks", completed_until="28.09.2026")
+        assert [t["number"] for t in until["tasks"]] == ["ID-3"], "until covers the whole day"
+        assert (await call(c, "yougile_find_tasks", completed_since="2026-09-29"))["count"] == 0
+        assert (await call(c, "yougile_find_tasks", completed_until="2026-09-27"))["count"] == 0
+        open_tasks = await call(c, "yougile_find_tasks", board="Разработка / Сайт")
+        assert open_tasks["tasks"][0]["overdue"] is True
+
+
 async def test_task_card_has_names_dates_and_messages(client_for):
     async with client_for() as c:
         card = await call(c, "yougile_task", task="ID-1", messages=2)

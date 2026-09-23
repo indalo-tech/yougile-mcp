@@ -59,6 +59,18 @@ def today(tz: ZoneInfo) -> date:
     return datetime.now(tz).date()
 
 
+def is_overdue(task: dict, tz: ZoneInfo, now: datetime | None = None) -> bool:
+    """An open task past its deadline; a deadline without time lasts until the end of that day."""
+    deadline = task.get("deadline") or {}
+    if task.get("completed") or task.get("archived"):
+        return False
+    if deadline.get("deleted") or not deadline.get("deadline"):
+        return False
+    now = now or datetime.now(tz)
+    due = datetime.fromtimestamp(deadline["deadline"] / 1000, tz)
+    return due < now if deadline.get("withTime") else due.date() < now.date()
+
+
 _HTML_TAG = re.compile(r"</?(p|br|b|i|u|s|ul|ol|li|a|strong|em|div|span|h\d|pre|code)\b", re.I)
 
 
@@ -95,7 +107,11 @@ def user_label(user: dict | None, fallback: str = "?") -> str:
 
 
 def task_summary(
-    task: dict, structure: Structure, users: dict[str, dict], tz: ZoneInfo
+    task: dict,
+    structure: Structure,
+    users: dict[str, dict],
+    tz: ZoneInfo,
+    now: datetime | None = None,
 ) -> dict[str, Any]:
     """One line per task for lists."""
     out: dict[str, Any] = {
@@ -104,12 +120,16 @@ def task_summary(
         "where": structure.column_label(task.get("columnId")) or "(no column)",
         "status": status_of(task),
     }
+    if task.get("completed") and task.get("completedTimestamp"):
+        out["completed_at"] = format_ms(task["completedTimestamp"], tz)
     if task.get("idTaskProject"):
         out["project_number"] = task["idTaskProject"]
     if task.get("assigned"):
         out["assignees"] = [user_label(users.get(u), u) for u in task["assigned"]]
     if deadline := format_deadline(task.get("deadline"), tz):
         out["deadline"] = deadline
+        if is_overdue(task, tz, now):
+            out["overdue"] = True
     tracking = task.get("timeTracking") or {}
     if tracking.get("plan") or tracking.get("work"):
         out["hours"] = {"plan": tracking.get("plan", 0), "work": tracking.get("work", 0)}
