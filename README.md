@@ -164,6 +164,7 @@ YouGile хранит часы только суммой по задаче, бе�
   "workflows": {
     "Клиенты / Сайт": ["Очередь", "В работе", "На проверке", "Готово"]
   },
+  "done_columns": ["Готово"],
   "timezone": "Europe/Moscow",
   "instructions": "В задачах клиентских проектов пишите клиентским языком."
 }
@@ -177,6 +178,7 @@ YouGile хранит часы только суммой по задаче, бе�
 | `confirm_projects` | запись в эти проекты — только после подтверждения человеком |
 | `deny` | запрещённые операции, можно маской: `users.*`. Удаление через `deleted: true` считается отдельной операцией `<инструмент>.delete`, например `tasks.delete` |
 | `workflows` | цепочки колонок для досок с расширением Workflow: YouGile не отдаёт их по API. Ключ — `"Проект / Доска"`. Первая колонка цепочки — колонка по умолчанию для новых задач |
+| `done_columns` | колонки, которые означают «сделано», даже если задача не отмечена выполненной: название для всех досок (`"Готово"`) или `"Проект / Доска / Колонка"`. Такие задачи не считаются открытыми и просроченными; перенося задачу туда, сервер отмечает её выполненной, чтобы YouGile запомнил дату, а перенося обратно — снимает отметку |
 | `timezone` | часовой пояс компании для дат, по умолчанию `Europe/Moscow` |
 | `instructions` | правила вашей компании для модели, строка или список строк |
 
@@ -220,7 +222,7 @@ YouGile хранит часы только суммой по задаче, бе�
 - Установленную версию показывают `yougile-mcp --version` и `yougile-mcp check`.
 - Номера по [SemVer](https://semver.org/lang/ru/): до 1.0 новые возможности поднимают вторую
   цифру, исправления — третью.
-- Поставить конкретную версию: `uvx yougile-mcp@0.4.0`. Последнюю, минуя кэш uv:
+- Поставить конкретную версию: `uvx yougile-mcp@0.5.0`. Последнюю, минуя кэш uv:
   `uvx yougile-mcp@latest`.
 
 ### Как это устроено
@@ -419,6 +421,7 @@ shared ones. `YOUGILE_CONFIG` points to a file explicitly.
   "workflows": {
     "Clients / Website": ["Queue", "In progress", "Review", "Done"]
   },
+  "done_columns": ["Done"],
   "timezone": "Europe/Moscow",
   "instructions": "Use client-friendly language in client projects."
 }
@@ -432,6 +435,7 @@ shared ones. `YOUGILE_CONFIG` points to a file explicitly.
 | `confirm_projects` | writes into these projects need a human confirmation |
 | `deny` | denied operations, masks allowed: `users.*`. Deleting via `deleted: true` counts as a separate `<tool>.delete` operation, e.g. `tasks.delete` |
 | `workflows` | column chains for boards using the Workflow extension, which YouGile does not expose via the API. Key: `"Project / Board"`. The first column of a chain is the default for new tasks |
+| `done_columns` | columns that mean "done" even when a task is not marked completed: a title for every board (`"Done"`) or `"Project / Board / Column"`. Such tasks are neither open nor overdue; moving a task there marks it completed so YouGile records the date, moving it back out reopens it |
 | `timezone` | the company time zone for dates, default `Europe/Moscow` |
 | `instructions` | your company's rules for the model, a string or a list of strings |
 
@@ -474,7 +478,7 @@ with `confirm=true` only after explicit consent.
 - `yougile-mcp --version` and `yougile-mcp check` show the installed version.
 - Numbers follow [SemVer](https://semver.org/): before 1.0, new features bump the second
   number and fixes the third.
-- Install a specific version: `uvx yougile-mcp@0.4.0`; the newest one, bypassing uv's cache:
+- Install a specific version: `uvx yougile-mcp@0.5.0`; the newest one, bypassing uv's cache:
   `uvx yougile-mcp@latest`.
 
 ### How it works

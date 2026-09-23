@@ -21,6 +21,7 @@ from .directory import Ambiguous, NotFound, Structure, _norm
 from .present import (
     format_ms,
     html_to_text,
+    is_done,
     parse_when,
     status_of,
     task_card,
@@ -83,6 +84,18 @@ class Work:
             if explicit_project or scope is None:
                 raise
             return structure.find_board(ref)  # the default project was only a hint
+
+    def done_columns(self, structure: Structure) -> frozenset[str]:
+        """Ids of the columns the workspace treats as done (a title, or "Project / Board /
+        Column")."""
+        wanted = {_norm(ref) for ref in self.cfg.done_columns}
+        if not wanted:
+            return frozenset()
+        return frozenset(
+            cid
+            for cid, col in structure.columns.items()
+            if _norm(col.get("title")) in wanted or _norm(structure.column_label(cid)) in wanted
+        )
 
     def workflow(self, structure: Structure, board_id: str) -> list[str] | None:
         """Column ids of the configured Workflow chain for a board, if any."""
@@ -184,7 +197,8 @@ async def yougile_overview(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """Company structure: projects -> boards -> columns in screen order, Workflow chains,
-    workspace defaults and this session's permissions. Start here to learn the names."""
+    workspace defaults, columns that count as done, and this session's permissions. Start here
+    to learn the names."""
     work = Work(ctx)
     s = await work.structure()
     policy = work.rt.policy
@@ -218,6 +232,7 @@ async def yougile_overview(
         "defaults": {"project": work.cfg.project, "board": work.cfg.board},
         "permissions": policy.summary(),
         "timezone": work.cfg.timezone,
+        **({"done_columns": work.cfg.done_columns} if work.cfg.done_columns else {}),
         **({"company_rules": work.cfg.instructions.strip()} if work.cfg.instructions else {}),
     }
 
@@ -249,8 +264,10 @@ async def yougile_find_tasks(
 ) -> dict[str, Any]:
     """Find tasks by project/board/column names, assignee and title words.
     Without a place, searches the workspace's default project if one is set, else the whole
-    company. Completed tasks show completed_at; open tasks past their deadline show
-    overdue: true. completed_since/completed_until select a period, newest first."""
+    company. Completed tasks show completed_at; tasks in a column that counts as done but not
+    marked completed show done_by_column: true (YouGile keeps no date for those); open tasks
+    past their deadline show overdue: true. completed_since/completed_until select tasks
+    completed in a period, newest first."""
     work = Work(ctx)
     done_from, done_before = _period(completed_since, completed_until, work.tz)
     if text and TASK_NUMBER.match(text.strip()):
@@ -260,10 +277,11 @@ async def yougile_find_tasks(
         return {
             "scope": "task number",
             "count": 1,
-            "tasks": [task_summary(task, s, users, work.tz)],
+            "tasks": [task_summary(task, s, users, work.tz, done_columns=work.done_columns(s))],
         }
 
     s = await work.structure()
+    done_ids = work.done_columns(s)
     columns: list[str] | None
     if column or board:
         b = await work.board(board, project)
@@ -305,7 +323,7 @@ async def yougile_find_tasks(
         t
         for t in tasks
         if (include_archived or not t.get("archived"))
-        and (status == "any" or (status == "completed") == bool(t.get("completed")))
+        and (status == "any" or (status == "completed") == is_done(t, done_ids))
         and all(w in _norm(t.get("title")) for w in words)
         and (not by_period or _completed_within(t, done_from, done_before))
     ]
@@ -316,7 +334,7 @@ async def yougile_find_tasks(
     return {
         "scope": scope,
         "count": len(selected),
-        "tasks": [task_summary(t, s, users, work.tz, now) for t in selected[:limit]],
+        "tasks": [task_summary(t, s, users, work.tz, now, done_ids) for t in selected[:limit]],
         **({"shown": limit} if len(selected) > limit else {}),
         **({"truncated": True} if truncated else {}),
     }
@@ -338,7 +356,7 @@ async def yougile_task(
     s = await work.structure()
     users = await work.directory.users_by_id()
     stickers = await work.directory.stickers() if t.get("stickers") else {}
-    card = task_card(t, s, users, stickers, work.tz)
+    card = task_card(t, s, users, stickers, work.tz, work.done_columns(s))
     if messages:
         card["messages"] = await work.messages(t["id"], messages)
     return card
@@ -404,7 +422,7 @@ async def yougile_create_task(
     created = await work.caller.call("tasks.create", body)
     t = await work.task(created["id"])
     users = await work.directory.users_by_id() if t.get("assigned") else {}
-    return {"created": task_summary(t, s, users, work.tz)}
+    return {"created": task_summary(t, s, users, work.tz, done_columns=work.done_columns(s))}
 
 
 @tool_errors
@@ -495,7 +513,8 @@ async def yougile_move_task(
 ) -> dict[str, Any]:
     """Move a task to another column. On boards with a configured Workflow chain (shown by
     yougile_overview) the card is walked through every intermediate column, since YouGile
-    rejects jumps over the chain."""
+    rejects jumps over the chain. Moving into a column that counts as done marks the task
+    completed (so YouGile records the date); moving it back out reopens it."""
     work = Work(ctx, confirm)
     t = await work.task(task)
     s = await work.structure()
@@ -513,10 +532,18 @@ async def yougile_move_task(
     if chain and current in chain and target in chain:
         i, j = chain.index(current), chain.index(target)
         path = chain[i + 1 : j + 1] if j > i else list(reversed(chain[j:i]))
+    # Into a "done" column: mark completed, so the date is recorded; out of one: reopen.
+    done_ids = work.done_columns(s)
+    finish: dict[str, Any] = {}
+    if target in done_ids and not t.get("completed"):
+        finish["completed"] = True
+    elif current in done_ids and target not in done_ids and t.get("completed"):
+        finish["completed"] = False
     done: list[str] = []
     for step in path:
+        body = {"id": t["id"], "columnId": step, **(finish if step == path[-1] else {})}
         try:
-            await work.caller.call("tasks.update", {"id": t["id"], "columnId": step})
+            await work.caller.call("tasks.update", body)
         except YouGileError as exc:
             if exc.status != 400:
                 raise
@@ -540,6 +567,7 @@ async def yougile_move_task(
         "from": s.column_label(current),
         "to": s.column_label(target),
         "path": [s.columns[c].get("title") for c in done],
+        **finish,
     }
 
 
@@ -585,7 +613,7 @@ async def yougile_task_chat(
     return {
         "task": work.number(t),
         "title": t.get("title"),
-        "status": status_of(t),
+        "status": status_of(t, work.done_columns(await work.structure())),
         **({"sent": True} if send else {}),
         "messages": await work.messages(t["id"], limit),
     }

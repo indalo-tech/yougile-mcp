@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import re
+from collections.abc import Collection
 from datetime import date, datetime, time
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -59,10 +60,17 @@ def today(tz: ZoneInfo) -> date:
     return datetime.now(tz).date()
 
 
-def is_overdue(task: dict, tz: ZoneInfo, now: datetime | None = None) -> bool:
+def is_done(task: dict, done_columns: Collection[str] = ()) -> bool:
+    """Completed, or sitting in a column the workspace treats as done."""
+    return bool(task.get("completed")) or task.get("columnId") in done_columns
+
+
+def is_overdue(
+    task: dict, tz: ZoneInfo, now: datetime | None = None, done_columns: Collection[str] = ()
+) -> bool:
     """An open task past its deadline; a deadline without time lasts until the end of that day."""
     deadline = task.get("deadline") or {}
-    if task.get("completed") or task.get("archived"):
+    if is_done(task, done_columns) or task.get("archived"):
         return False
     if deadline.get("deleted") or not deadline.get("deadline"):
         return False
@@ -92,12 +100,12 @@ def html_to_text(value: str | None) -> str:
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
-def status_of(task: dict) -> str:
+def status_of(task: dict, done_columns: Collection[str] = ()) -> str:
     if task.get("deleted"):
         return "deleted"
     if task.get("archived"):
         return "archived"
-    return "completed" if task.get("completed") else "open"
+    return "completed" if is_done(task, done_columns) else "open"
 
 
 def user_label(user: dict | None, fallback: str = "?") -> str:
@@ -112,23 +120,26 @@ def task_summary(
     users: dict[str, dict],
     tz: ZoneInfo,
     now: datetime | None = None,
+    done_columns: Collection[str] = (),
 ) -> dict[str, Any]:
     """One line per task for lists."""
     out: dict[str, Any] = {
         "number": task.get("idTaskCommon"),
         "title": task.get("title"),
         "where": structure.column_label(task.get("columnId")) or "(no column)",
-        "status": status_of(task),
+        "status": status_of(task, done_columns),
     }
     if task.get("completed") and task.get("completedTimestamp"):
         out["completed_at"] = format_ms(task["completedTimestamp"], tz)
+    elif out["status"] == "completed":
+        out["done_by_column"] = True  # in a done column, not marked: YouGile has no date for it
     if task.get("idTaskProject"):
         out["project_number"] = task["idTaskProject"]
     if task.get("assigned"):
         out["assignees"] = [user_label(users.get(u), u) for u in task["assigned"]]
     if deadline := format_deadline(task.get("deadline"), tz):
         out["deadline"] = deadline
-        if is_overdue(task, tz, now):
+        if is_overdue(task, tz, now, done_columns):
             out["overdue"] = True
     tracking = task.get("timeTracking") or {}
     if tracking.get("plan") or tracking.get("work"):
@@ -142,9 +153,10 @@ def task_card(
     users: dict[str, dict],
     stickers: dict[str, dict],
     tz: ZoneInfo,
+    done_columns: Collection[str] = (),
 ) -> dict[str, Any]:
     """Everything a person would read on the card, with names instead of ids."""
-    card = task_summary(task, structure, users, tz)
+    card = task_summary(task, structure, users, tz, done_columns=done_columns)
     card["id"] = task.get("id")
     if task.get("createdBy") or task.get("timestamp"):
         card["created"] = {

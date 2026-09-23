@@ -71,6 +71,39 @@ async def test_find_completed_in_a_period_and_overdue(client_for, fake):
         assert open_tasks["tasks"][0]["overdue"] is True
 
 
+async def test_done_columns_count_as_done(client_for, fake):
+    fake.tasks["t-done"].update(completed=False, completedTimestamp=None)  # moved, not marked
+    fake.tasks["t-done"]["deadline"] = {"deadline": 1577836800000}  # long past: yet not overdue
+    async with client_for(done_columns=["готово"]) as c:
+        overview = await call(c, "yougile_overview")
+        assert overview["done_columns"] == ["готово"]
+        open_now = await call(c, "yougile_find_tasks", board="Разработка / Сайт")
+        assert [t["number"] for t in open_now["tasks"]] == ["ID-1"], "done column is not open"
+        done = await call(c, "yougile_find_tasks", board="Разработка / Сайт", status="completed")
+        task = done["tasks"][0]
+        assert (task["number"], task["status"], task["done_by_column"]) == (
+            "ID-3",
+            "completed",
+            True,
+        )
+        assert "overdue" not in task and "completed_at" not in task
+        card = await call(c, "yougile_task", task="ID-3")
+        assert card["status"] == "completed" and card["done_by_column"] is True
+
+
+async def test_move_into_a_done_column_marks_completed(client_for, fake):
+    async with client_for(workflows=CHAIN, done_columns=["Разработка / Сайт / Готово"]) as c:
+        data = await call(c, "yougile_move_task", task="ID-1", column="Готово")
+        assert data["completed"] is True
+        bodies = fake.bodies("PUT", "/api-v2/tasks/t-int")
+        assert [b.get("completed") for b in bodies] == [None, None, True], "only on the last step"
+        back = await call(c, "yougile_move_task", task="ID-1", column="На проверке")
+        assert back["completed"] is False, "moving out of a done column reopens the task"
+        assert fake.tasks["t-int"]["completed"] is False
+        stay = await call(c, "yougile_move_task", task="ID-1", column="В работе")
+        assert "completed" not in stay, "between ordinary columns nothing changes"
+
+
 async def test_task_card_has_names_dates_and_messages(client_for):
     async with client_for() as c:
         card = await call(c, "yougile_task", task="ID-1", messages=2)

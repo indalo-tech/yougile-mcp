@@ -30,6 +30,7 @@ KNOWN_KEYS = {
     "confirm_projects",
     "deny",
     "workflows",
+    "done_columns",
     "instructions",
     "timezone",
 }
@@ -91,6 +92,9 @@ class WorkspaceConfig:
     confirm_projects: list[str] = field(default_factory=list)
     deny: list[str] = field(default_factory=list)
     workflows: dict[str, list[str]] = field(default_factory=dict)
+    # Columns that mean "done" even without the completed flag: a title for every board
+    # ("Готово") or one column as "Project / Board / Column".
+    done_columns: list[str] = field(default_factory=list)
     instructions: str = ""
     timezone: str = DEFAULT_TIMEZONE
     sources: list[str] = field(default_factory=list)
@@ -138,6 +142,8 @@ class WorkspaceConfig:
                 raise ConfigError(f"{source}: workflows must map 'Project / Board' to column lists")
             for board, chain in wf.items():
                 self.workflows[str(board)] = _str_list(chain, f"workflows[{board!r}]", source)
+        if "done_columns" in data:
+            self.done_columns = _str_list(data["done_columns"], "done_columns", source)
         if "instructions" in data:
             text = data["instructions"]
             if isinstance(text, list):

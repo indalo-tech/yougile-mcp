@@ -25,6 +25,7 @@ def test_repo_config_overrides_global(tmp_path):
     assert (cfg.role, cfg.project, cfg.board) == ("member", "Разработка", "Сайт")
     assert cfg.confirm_projects == ["Клиенты"]
     assert cfg.workflows == {"Клиенты / Сайт": ["A", "B"]}
+    assert WorkspaceConfig.from_dict({"done_columns": "Готово"}).done_columns == ["Готово"]
     assert cfg.instructions == "a\nb"
     assert len(cfg.sources) == 2
 

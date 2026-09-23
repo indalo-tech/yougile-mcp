@@ -5,6 +5,36 @@
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-09-23
+
+### Русский
+
+#### Добавлено
+- Настройка `done_columns` — колонки, которые означают «сделано», даже если задача не отмечена
+  выполненной (многие команды просто переносят карточку в «Готово»). Такие задачи в поиске
+  считаются выполненными (`done_by_column: true`), не попадают в открытые и не бывают
+  просроченными; `yougile_overview` показывает эти колонки.
+- `yougile_move_task`: перенос в такую колонку отмечает задачу выполненной — YouGile запоминает
+  дату, и задача попадает в стендап и отчёты за период; перенос обратно снимает отметку.
+
+#### Изменено
+- Сценарии `standup` и `hours_report` отделяют задачи «сделано по колонке» без даты: YouGile не
+  хранит дату переноса, поэтому их нельзя отнести ко «вчера» или к периоду.
+
+### English
+
+#### Added
+- `done_columns` setting: columns that mean "done" even when a task is not marked completed
+  (many teams just move the card to "Done"). Such tasks count as completed in searches
+  (`done_by_column: true`), are never open or overdue, and `yougile_overview` lists the columns.
+- `yougile_move_task`: moving into such a column marks the task completed, so YouGile records
+  the date and the task shows up in stand-ups and period reports; moving it back reopens it.
+
+#### Changed
+- The `standup` and `hours_report` scenarios keep "done by column" tasks without a date apart:
+  YouGile does not store when a card was moved, so they cannot be placed in "yesterday" or a
+  period.
+
 ## [0.4.0] — 2026-09-23
 
 ### Русский
@@ -172,7 +202,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.2.0...v0.3.0
