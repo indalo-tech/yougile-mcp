@@ -148,6 +148,15 @@ def describe_api_error(exc: YouGileError) -> str:
     return detail
 
 
+def describe_policy_error(exc: PolicyError) -> str:
+    """The refusal plus where this session's permissions can be changed."""
+    try:
+        hint = runtime.current().settings_hint
+    except RuntimeError:
+        return str(exc)
+    return f"{exc}. Permissions are set in {hint}"
+
+
 P = ParamSpec("P")
 
 
@@ -162,7 +171,9 @@ def tool_errors(fn: Callable[P, Awaitable[Any]]) -> Callable[P, Awaitable[Any]]:
             return req.result
         except Cancelled:
             return {"cancelled": True, "reason": "the user did not confirm the write"}
-        except (ParamError, PolicyError, NotFound, Ambiguous, ValueError) as exc:
+        except PolicyError as exc:
+            raise ToolError(describe_policy_error(exc)) from exc
+        except (ParamError, NotFound, Ambiguous, ValueError) as exc:
             raise ToolError(str(exc)) from exc
         except YouGileError as exc:
             raise ToolError(describe_api_error(exc)) from exc

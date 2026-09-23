@@ -207,8 +207,20 @@ async def test_hints_point_where_settings_live(make_runtime):
                 await call(c, "yougile_create_task", title="x")
             with pytest.raises(ToolError, match=r"workflows setting \(the admin page"):
                 await call(c, "yougile_move_task", task="ID-1", column="Готово")
+            data = await call(c, "yougile_overview")
+            assert data["settings_in"] == "the admin page https://yougile.example/admin"
     finally:
         runtime.set_default(None)
+
+
+async def test_refusals_say_where_permissions_are_set(client_for):
+    async with client_for(role="reader") as c:
+        with pytest.raises(ToolError, match=r"needs role.*Permissions are set in \.yougile\.json"):
+            await call(c, "yougile_log_time", task="ID-1", hours=1)
+        with pytest.raises(ToolError, match=r"needs role.*Permissions are set in \.yougile\.json"):
+            await c.call_tool(
+                "yougile_tasks", {"operation": "update", "params": {"id": "t-int", "title": "x"}}
+            )
 
 
 async def test_log_time_adds_to_worked_hours(client_for, fake):

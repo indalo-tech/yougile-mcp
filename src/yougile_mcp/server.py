@@ -20,7 +20,8 @@ from .dispatch import describe
 BASE_INSTRUCTIONS = """\
 YouGile (task tracker). Two kinds of tools:
 - Task-level tools take names and numbers instead of UUIDs: yougile_overview (projects, \
-boards, columns, your permissions and the company's rules — call it first), \
+boards, columns, your permissions, where settings are changed and the company's rules — \
+call it first), \
 yougile_find_tasks, yougile_task (open a card), yougile_create_task, yougile_update_task, \
 yougile_move_task (follows Workflow chains), yougile_log_time, yougile_task_chat. \
 Prefer them for everyday work.

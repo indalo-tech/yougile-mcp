@@ -197,8 +197,8 @@ async def yougile_overview(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """Company structure: projects -> boards -> columns in screen order, Workflow chains,
-    workspace defaults, columns that count as done, and this session's permissions. Start here
-    to learn the names."""
+    workspace defaults, columns that count as done, this session's permissions and where
+    settings are changed. Start here to learn the names."""
     work = Work(ctx)
     s = await work.structure()
     policy = work.rt.policy
@@ -231,6 +231,7 @@ async def yougile_overview(
         "projects": result,
         "defaults": {"project": work.cfg.project, "board": work.cfg.board},
         "permissions": policy.summary(),
+        "settings_in": work.rt.settings_hint,
         "timezone": work.cfg.timezone,
         **({"done_columns": work.cfg.done_columns} if work.cfg.done_columns else {}),
         **({"company_rules": work.cfg.instructions.strip()} if work.cfg.instructions else {}),

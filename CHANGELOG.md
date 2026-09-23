@@ -5,6 +5,24 @@
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-09-23
+
+### Русский
+
+#### Исправлено
+- Отказ по правам (роль, проекты, запрещённые операции) говорит, где эти права меняются:
+  `.yougile.json` локально, страница администратора на сервере (`Runtime.settings_hint`).
+- `yougile_overview` возвращает `settings_in` — где меняются настройки и права, чтобы ассистент
+  мог дать ссылку, когда об этом спрашивают.
+
+### English
+
+#### Fixed
+- Permission refusals (role, projects, denied operations) say where those permissions are
+  changed: `.yougile.json` locally, the admin page on a hosted server (`Runtime.settings_hint`).
+- `yougile_overview` returns `settings_in`, where settings and permissions are changed, so the
+  assistant can give the link when asked.
+
 ## [0.5.0] — 2026-09-23
 
 ### Русский
@@ -202,7 +220,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.3.0...v0.3.1
