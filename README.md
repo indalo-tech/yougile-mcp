@@ -234,6 +234,14 @@ uv run --no-project python scripts/sync_spec.py   # обновить снимо�
 репозитория `PUBLISH_PYPI` (не `true`). Уже выпущенный тег можно отправить повторно через
 Actions → Release → Run workflow.
 
+### Участники
+
+- [Hovhannes Mirzoyan](https://github.com/hovhannes-mirzoyan)
+- [Artashes Mirzoyan](https://github.com/AMirzoian)
+
+Проект развивает [Indalo](https://github.com/indalo-tech). Предложения и ошибки — в
+[Issues](https://github.com/indalo-tech/yougile-mcp/issues).
+
 ### Лицензия
 
 [MIT](LICENSE)
@@ -460,6 +468,14 @@ version, runs the tests, builds the package and publishes a GitHub Release with 
 this repository's `release.yml` workflow in the `pypi` environment. The repository variable
 `PUBLISH_PYPI` (anything but `true`) turns publishing off. An already released tag can be
 published again via Actions → Release → Run workflow.
+
+### Contributors
+
+- [Hovhannes Mirzoyan](https://github.com/hovhannes-mirzoyan)
+- [Artashes Mirzoyan](https://github.com/AMirzoian)
+
+Maintained by [Indalo](https://github.com/indalo-tech). Ideas and bugs go to
+[Issues](https://github.com/indalo-tech/yougile-mcp/issues).
 
 ### License
 
