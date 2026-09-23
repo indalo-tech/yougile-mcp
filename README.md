@@ -201,7 +201,7 @@ YOUGILE_API_KEY=ваш_ключ uvx yougile-mcp check
 - Установленную версию показывают `yougile-mcp --version` и `yougile-mcp check`.
 - Номера по [SemVer](https://semver.org/lang/ru/): до 1.0 новые возможности поднимают вторую
   цифру, исправления — третью.
-- Поставить конкретную версию: `uvx yougile-mcp@0.2.0`. Последнюю, минуя кэш uv:
+- Поставить конкретную версию: `uvx yougile-mcp@0.3.0`. Последнюю, минуя кэш uv:
   `uvx yougile-mcp@latest`.
 
 ### Как это устроено
@@ -436,7 +436,7 @@ with `confirm=true` only after explicit consent.
 - `yougile-mcp --version` and `yougile-mcp check` show the installed version.
 - Numbers follow [SemVer](https://semver.org/): before 1.0, new features bump the second
   number and fixes the third.
-- Install a specific version: `uvx yougile-mcp@0.2.0`; the newest one, bypassing uv's cache:
+- Install a specific version: `uvx yougile-mcp@0.3.0`; the newest one, bypassing uv's cache:
   `uvx yougile-mcp@latest`.
 
 ### How it works
