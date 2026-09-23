@@ -70,7 +70,9 @@ class Work:
         structure = await self.structure()
         ref = board or self.cfg.board
         if not ref:
-            raise ValueError("board is required (no default board in .yougile.json)")
+            raise ValueError(
+                f"board is required: no default board is set in {self.rt.settings_hint}"
+            )
         explicit_project = project is not None or "/" in ref
         scope = project if explicit_project else self.cfg.project
         try:
@@ -215,13 +217,18 @@ async def yougile_find_tasks(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """Find tasks by project/board/column names, assignee and title words.
-    Without a place, searches the default project from .yougile.json, else the whole company."""
+    Without a place, searches the workspace's default project if one is set, else the whole
+    company."""
     work = Work(ctx)
     if text and TASK_NUMBER.match(text.strip()):
         task = await work.task(text)
         s = await work.structure()
         users = await work.directory.users_by_id()
-        return {"count": 1, "tasks": [task_summary(task, s, users, work.tz)]}
+        return {
+            "scope": "task number",
+            "count": 1,
+            "tasks": [task_summary(task, s, users, work.tz)],
+        }
 
     s = await work.structure()
     columns: list[str] | None
@@ -286,7 +293,8 @@ async def yougile_task(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """Open a task card: where it is, status, assignees, deadline, hours, checklists,
-    stickers by name, description, and optionally the latest chat messages."""
+    stickers by name, description, and optionally the latest chat messages. Stickers of types
+    the YouGile API does not describe (numbers, free text) come by id under other_stickers."""
     work = Work(ctx)
     t = await work.task(task)
     s = await work.structure()
@@ -306,7 +314,8 @@ async def yougile_create_task(
         Field(description="Column name; default: the first column of the board's Workflow chain"),
     ] = None,
     board: Annotated[
-        str | None, Field(description='Board name or "Project / Board"; default from config')
+        str | None,
+        Field(description='Board name or "Project / Board"; default: the workspace default board'),
     ] = None,
     project: Annotated[str | None, Field(description="Project, to disambiguate the board")] = None,
     description: Annotated[
@@ -446,8 +455,8 @@ async def yougile_move_task(
     confirm: Confirm = False,
     ctx: Context | None = None,
 ) -> dict[str, Any]:
-    """Move a task to another column. On boards with a Workflow chain configured in
-    .yougile.json the card is walked through every intermediate column, since YouGile
+    """Move a task to another column. On boards with a configured Workflow chain (shown by
+    yougile_overview) the card is walked through every intermediate column, since YouGile
     rejects jumps over the chain."""
     work = Work(ctx, confirm)
     t = await work.task(task)
@@ -478,9 +487,10 @@ async def yougile_move_task(
                 "YouGile rejected this transition; the board's Workflow may need other steps."
                 if chain
                 else "YouGile rejected the direct move, most likely because of the Workflow "
-                "extension. Add the column chain for this board to .yougile.json, e.g. "
-                f'"workflows": {{"{s.board_label(target_board)}": '
-                f"{[c.get('title') for c in s.columns_of_board(target_board['id'])]}}}."
+                "extension. Add this board's column chain to the workflows setting "
+                f"({work.rt.settings_hint}), in the board's order, e.g. "
+                f'"{s.board_label(target_board)}": '
+                f"{[c.get('title') for c in s.columns_of_board(target_board['id'])]}."
             )
             raise ValueError(
                 f"{work.number(t)}: move to {s.column_label(step)} failed ({exc.message}). "

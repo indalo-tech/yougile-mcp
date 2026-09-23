@@ -5,6 +5,31 @@
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-09-23
+
+### Русский
+
+#### Исправлено
+- Карточка задачи больше не выдаёт id стикера за его название. Стикеры типов, которых API
+  YouGile не описывает (числа, свободный текст), идут отдельно — в `other_stickers`, по id.
+- Подсказки в ошибках («нет доски по умолчанию», «добавьте цепочку Workflow») указывают, где
+  на самом деле меняются настройки: новое поле `Runtime.settings_hint` — `.yougile.json`
+  локально, страница администратора на сервере. Описания инструментов больше не отсылают
+  к `.yougile.json`.
+- Поиск задачи по номеру возвращает `scope`, как любой другой поиск.
+- README: адрес работающей серверной версии — `https://yougile.indalo.ru/mcp`.
+
+### English
+
+#### Fixed
+- The task card no longer passes a sticker id off as its name. Sticker types the YouGile API
+  does not describe (numbers, free text) come separately, by id, under `other_stickers`.
+- Error hints ("no default board", "add the Workflow chain") point to where settings really
+  live: the new `Runtime.settings_hint` — `.yougile.json` locally, the admin page on a hosted
+  server. Tool descriptions no longer refer to `.yougile.json`.
+- A search by task number returns `scope`, like any other search.
+- README: the address of the running hosted version, `https://yougile.indalo.ru/mcp`.
+
 ## [0.3.0] — 2026-09-23
 
 ### Русский
@@ -123,7 +148,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/indalo-tech/yougile-mcp/releases/tag/v0.1.0

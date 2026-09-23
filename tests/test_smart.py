@@ -49,6 +49,7 @@ async def test_find_tasks_by_place_assignee_and_number(client_for, fake):
 
         by_number = await call(c, "yougile_find_tasks", text="DEV-1")
         assert by_number["tasks"][0]["where"] == "Разработка / Сайт / Очередь"
+        assert by_number["scope"] == "task number", "same shape as any other search"
 
         by_words = await call(c, "yougile_find_tasks", text="finished WORK", status="any")
         assert [t["number"] for t in by_words["tasks"]] == ["ID-3"]
@@ -63,6 +64,7 @@ async def test_task_card_has_names_dates_and_messages(client_for):
     assert card["hours"] == {"plan": 5, "work": 3}
     assert card["checklists"][0]["items"] == ["[ ] Написать код", "[ ] Проверить"]
     assert card["stickers"] == {"Приоритет": "Высокий"}
+    assert card["other_stickers"] == {"st-num": "0"}, "unnamed stickers never pose as names"
     assert card["description"] == "Первая строка\nВторая & последняя"
     assert card["created"]["by"] == "Анна Смирнова"
     assert [m["text"] for m in card["messages"]] == ["Ок", "Готово к проверке"]
@@ -144,6 +146,20 @@ async def test_move_without_chain_explains_workflow(client_for, fake):
         with pytest.raises(ToolError, match="Workflow extension.*workflows.*Разработка / Сайт"):
             await call(c, "yougile_move_task", task="ID-1", column="Готово")
     assert fake.tasks["t-int"]["columnId"] == "c-int-queue"
+
+
+async def test_hints_point_where_settings_live(make_runtime):
+    rt = make_runtime()
+    rt.settings_hint = "the admin page https://yougile.example/admin"
+    runtime.set_default(rt)
+    try:
+        async with Client(build_server(rt)) as c:
+            with pytest.raises(ToolError, match="no default board is set in the admin page"):
+                await call(c, "yougile_create_task", title="x")
+            with pytest.raises(ToolError, match=r"workflows setting \(the admin page"):
+                await call(c, "yougile_move_task", task="ID-1", column="Готово")
+    finally:
+        runtime.set_default(None)
 
 
 async def test_log_time_adds_to_worked_hours(client_for, fake):

@@ -35,8 +35,10 @@ MCP-сервер, через который Claude и другие AI-ассис
 - **Ключ — только из переменной окружения.** Он не попадает ни в файлы настроек, ни в модель.
   Эндпоинты входа по логину и паролю модели недоступны.
 
-> **Серверная версия** — подключение по адресу, без установки, вход через логин YouGile — готовится.
-> Адрес появится здесь.
+> **Без установки:** добавьте в AI-клиенте удалённый MCP-сервер `https://yougile.indalo.ru/mcp`
+> и войдите логином YouGile. Администраторы компании настраивают права сотрудников на
+> [yougile.indalo.ru/admin](https://yougile.indalo.ru/admin). Код сервера —
+> [yougile-mcp-cloud](https://github.com/indalo-tech/yougile-mcp-cloud).
 
 ### Быстрый старт
 
@@ -95,7 +97,7 @@ YOUGILE_API_KEY=ваш_ключ uvx yougile-mcp check
 |---|---|
 | `yougile_overview` | проекты → доски → колонки в порядке экрана, цепочки Workflow, умолчания и права |
 | `yougile_find_tasks` | поиск по проекту, доске, колонке, исполнителю (имя, почта или `me`), словам из названия или номеру; по умолчанию только открытые |
-| `yougile_task` | карточка: где лежит, исполнители, срок, часы, чек-листы, стикеры по названиям, описание, последние сообщения |
+| `yougile_task` | карточка: где лежит, исполнители, срок, часы, чек-листы, стикеры по названиям (стикеры типов, которых нет в API, — числа, свободный текст — отдельно по id), описание, последние сообщения |
 | `yougile_create_task` | создать: доска и колонка по названию, исполнители по имени или почте, срок датой, план часов, чек-лист, цвет |
 | `yougile_update_task` | изменить поля, выполнить, архивировать, добавить или снять исполнителей, отметить пункты чек-листа, убрать срок |
 | `yougile_move_task` | перенести в другую колонку; на досках с Workflow проходит все промежуточные колонки |
@@ -201,7 +203,7 @@ YOUGILE_API_KEY=ваш_ключ uvx yougile-mcp check
 - Установленную версию показывают `yougile-mcp --version` и `yougile-mcp check`.
 - Номера по [SemVer](https://semver.org/lang/ru/): до 1.0 новые возможности поднимают вторую
   цифру, исправления — третью.
-- Поставить конкретную версию: `uvx yougile-mcp@0.3.0`. Последнюю, минуя кэш uv:
+- Поставить конкретную версию: `uvx yougile-mcp@0.3.1`. Последнюю, минуя кэш uv:
   `uvx yougile-mcp@latest`.
 
 ### Как это устроено
@@ -271,8 +273,10 @@ tasks, boards, columns, chats, employees and stickers, on top of the official RE
 - **The key comes from the environment only.** It never goes into config files or to the
   model. Login-and-password endpoints are not exposed to the model.
 
-> **Hosted version** — connect by URL, nothing to install, sign in with your YouGile login —
-> is in the works. The address will appear here.
+> **Nothing to install:** add the remote MCP server `https://yougile.indalo.ru/mcp` in your AI
+> client and sign in with your YouGile login. Company admins set their people's rights at
+> [yougile.indalo.ru/admin](https://yougile.indalo.ru/admin). Server code:
+> [yougile-mcp-cloud](https://github.com/indalo-tech/yougile-mcp-cloud).
 
 ### Quick start
 
@@ -331,7 +335,7 @@ They take names and numbers and show names and dates. Start with them for everyd
 |---|---|
 | `yougile_overview` | projects → boards → columns in screen order, Workflow chains, defaults and permissions |
 | `yougile_find_tasks` | search by project, board, column, assignee (name, email or `me`), title words or number; open tasks by default |
-| `yougile_task` | the card: location, assignees, deadline, hours, checklists, stickers by name, description, latest messages |
+| `yougile_task` | the card: location, assignees, deadline, hours, checklists, stickers by name (sticker types the API does not describe — numbers, free text — separately, by id), description, latest messages |
 | `yougile_create_task` | create: board and column by name, assignees by name or email, deadline as a date, planned hours, checklist, color |
 | `yougile_update_task` | edit fields, complete, archive, add or remove assignees, check checklist items, remove the deadline |
 | `yougile_move_task` | move to another column; on Workflow boards it passes every intermediate column |
@@ -436,7 +440,7 @@ with `confirm=true` only after explicit consent.
 - `yougile-mcp --version` and `yougile-mcp check` show the installed version.
 - Numbers follow [SemVer](https://semver.org/): before 1.0, new features bump the second
   number and fixes the third.
-- Install a specific version: `uvx yougile-mcp@0.3.0`; the newest one, bypassing uv's cache:
+- Install a specific version: `uvx yougile-mcp@0.3.1`; the newest one, bypassing uv's cache:
   `uvx yougile-mcp@latest`.
 
 ### How it works

@@ -62,7 +62,8 @@ TASKS = {
                 ],
             }
         ],
-        "stickers": {"st-prio": "s-high"},
+        # st-num: a sticker type the API does not list (a number), so it has no name for us
+        "stickers": {"st-prio": "s-high", "st-num": "0"},
         "description": "<p>Первая строка</p><p>Вторая &amp; последняя</p>",
     },
     "t-done": {

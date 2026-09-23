@@ -25,6 +25,9 @@ class Runtime:
     policy: Policy
     directory: Directory
     allow_local_files: bool = True  # hosted servers set False: no reading of the server's disk
+    # Where people change this session's workspace settings (default board, Workflow chains);
+    # error messages send them there. A hosted server names its admin page instead.
+    settings_hint: str = ".yougile.json"
 
 
 _current: ContextVar[Runtime | None] = ContextVar("yougile_runtime", default=None)

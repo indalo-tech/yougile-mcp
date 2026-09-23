@@ -146,13 +146,17 @@ def task_card(
         ]
     if task.get("stickers"):
         named: dict[str, Any] = {}
+        unnamed: dict[str, Any] = {}  # types the API does not list (numbers, free text)
         for sticker_id, value in task["stickers"].items():
             sticker = stickers.get(sticker_id)
             if sticker is None:
-                named[sticker_id] = value
-                continue
-            named[sticker["name"]] = sticker["states"].get(value, value)
-        card["stickers"] = named
+                unnamed[sticker_id] = value
+            else:
+                named[sticker["name"]] = sticker["states"].get(value, value)
+        if named:
+            card["stickers"] = named
+        if unnamed:
+            card["other_stickers"] = unnamed
     if task.get("subtasks"):
         card["subtasks"] = len(task["subtasks"])
     if description := html_to_text(task.get("description")):
