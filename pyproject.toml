@@ -1,0 +1,51 @@
+[project]
+name = "yougile-mcp"
+version = "0.1.0"
+description = "MCP server for YouGile: full REST API v2, names instead of UUIDs, shared rate limit, permissions"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "Indalo" }]
+keywords = ["mcp", "yougile", "model-context-protocol", "claude", "task-tracker"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Office/Business :: Groupware",
+]
+dependencies = [
+    "fastmcp>=4.0.5,<5",
+    "httpx2>=2.13",
+]
+
+[project.scripts]
+yougile-mcp = "yougile_mcp.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/indalo-tech/yougile-mcp"
+Issues = "https://github.com/indalo-tech/yougile-mcp/issues"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1",
+    "pytest-asyncio>=1.4",
+    "ruff>=0.16",
+]
+
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/yougile_mcp"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
