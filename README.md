@@ -227,7 +227,14 @@ uv run --no-project python scripts/sync_spec.py   # обновить снимо�
 **Выпуск версии.** Поменяйте `__version__` в `src/yougile_mcp/__init__.py`, перенесите записи
 из `[Unreleased]` в новый раздел `CHANGELOG.md` (на двух языках), закоммитьте и отправьте тег:
 `git tag v0.3.0 && git push origin v0.3.0`. Workflow проверит, что тег совпадает с версией,
-прогонит тесты, соберёт пакет и опубликует GitHub Release с описанием из `CHANGELOG.md`.
+прогонит тесты, соберёт пакет и опубликует GitHub Release с описанием из `CHANGELOG.md`,
+а если включена публикация на PyPI — и пакет на PyPI.
+
+**Публикация на PyPI** идёт через Trusted Publishing, без токенов. Один раз: на pypi.org в
+Account settings → Publishing добавьте publisher для GitHub — проект `yougile-mcp`, владелец
+`indalo-tech`, репозиторий `yougile-mcp`, workflow `release.yml`, environment `pypi`. Затем
+включите шаг: `gh variable set PUBLISH_PYPI --body true -R indalo-tech/yougile-mcp`.
+Уже выпущенную версию можно отправить на PyPI через Actions → Release → Run workflow с её тегом.
 
 ### Лицензия
 
@@ -453,7 +460,13 @@ HTTP transport for debugging: `uv run yougile-mcp serve --transport http --port 
 entries into a new `CHANGELOG.md` section (in both languages), commit and push a tag:
 `git tag v0.3.0 && git push origin v0.3.0`. The workflow checks that the tag matches the
 version, runs the tests, builds the package and publishes a GitHub Release with the notes from
-`CHANGELOG.md`.
+`CHANGELOG.md`, and the package on PyPI when PyPI publishing is enabled.
+
+**PyPI publishing** uses Trusted Publishing, no tokens. Once: on pypi.org under Account
+settings → Publishing add a GitHub publisher — project `yougile-mcp`, owner `indalo-tech`,
+repository `yougile-mcp`, workflow `release.yml`, environment `pypi`. Then enable the step:
+`gh variable set PUBLISH_PYPI --body true -R indalo-tech/yougile-mcp`. A version that is
+already released can be sent to PyPI via Actions → Release → Run workflow with its tag.
 
 ### License
 

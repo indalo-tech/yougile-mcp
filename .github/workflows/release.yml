@@ -1,34 +1,80 @@
 name: Release
 
-# Push a tag vX.Y.Z (matching __version__ in src/yougile_mcp/__init__.py) to publish a
-# GitHub Release with the CHANGELOG.md section and the built package attached.
+# Push a tag vX.Y.Z (matching __version__ in src/yougile_mcp/__init__.py) to publish a GitHub
+# Release with the CHANGELOG.md section and the built package attached, and — once PyPI
+# Trusted Publishing is set up and the repository variable PUBLISH_PYPI is "true" — the same
+# package on PyPI. "Run workflow" with an existing tag republishes it (e.g. to PyPI later).
 on:
   push:
     tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to publish, e.g. v0.2.0"
+        required: true
 
-permissions:
-  contents: write
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
       - uses: astral-sh/setup-uv@v10.2.0
       - name: Tag matches the package version
         run: |
           version=$(uv run --no-project python -c "import re,pathlib; print(re.search(r'__version__ = \"(.+?)\"', pathlib.Path('src/yougile_mcp/__init__.py').read_text()).group(1))")
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "tag $GITHUB_REF_NAME does not match __version__ $version"; exit 1
+          if [ "v$version" != "$TAG" ]; then
+            echo "tag $TAG does not match __version__ $version"; exit 1
           fi
       - run: uv sync --locked
       - run: uv run pytest -q
       - run: uv build
       - name: Release notes from CHANGELOG.md
-        run: uv run --no-project python scripts/release_notes.py "$GITHUB_REF_NAME" > notes.md
-      - name: Publish GitHub Release
+        run: uv run --no-project python scripts/release_notes.py "$TAG" > dist-notes.md
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: |
+            dist/
+            dist-notes.md
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+      - name: Publish GitHub Release (skipped if it already exists)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/* \
-            --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release $TAG already exists"
+          else
+            gh release create "$TAG" dist/* -R "$GITHUB_REPOSITORY" \
+              --title "$TAG" --notes-file dist-notes.md --verify-tag
+          fi
+
+  pypi:
+    needs: build
+    if: vars.PUBLISH_PYPI == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/yougile-mcp/
+    permissions:
+      id-token: write  # Trusted Publishing: no API token stored anywhere
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+      - uses: pypa/gh-action-pypi-publish@v1.14.2
+        with:
+          packages-dir: dist/

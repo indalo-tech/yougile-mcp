@@ -30,7 +30,8 @@
 - Поле `workflows` в `.yougile.json` теперь используется при переносе и создании задач.
 - Подтверждение записи в клиентский проект спрашивается один раз на действие, даже если
   действие делает несколько записей (перенос через несколько колонок).
-- Версионирование: версия в одном месте, этот файл, выпуск GitHub Release по тегу `vX.Y.Z`.
+- Версионирование: версия в одном месте, этот файл, выпуск GitHub Release по тегу `vX.Y.Z`
+  и публикация на PyPI через Trusted Publishing, когда она включена.
 
 #### Изменено
 - Зависимость `tzdata` на Windows — там нет системной базы часовых поясов.
@@ -58,7 +59,8 @@
 - The `workflows` field of `.yougile.json` is now used when moving and creating tasks.
 - A confirmation for writing into a client-facing project is asked once per action, even when
   the action performs several writes (a move through several columns).
-- Versioning: a single version source, this file, GitHub Releases from `vX.Y.Z` tags.
+- Versioning: a single version source, this file, GitHub Releases from `vX.Y.Z` tags and
+  PyPI publishing via Trusted Publishing once enabled.
 
 #### Changed
 - `tzdata` dependency on Windows, which has no system time zone database.
