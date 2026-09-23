@@ -1,6 +1,7 @@
 # YouGile MCP
 
 [![Release](https://img.shields.io/github/v/release/indalo-tech/yougile-mcp?label=release)](https://github.com/indalo-tech/yougile-mcp/releases/latest)
+[![PyPI](https://img.shields.io/pypi/v/yougile-mcp)](https://pypi.org/project/yougile-mcp/)
 [![CI](https://github.com/indalo-tech/yougile-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/indalo-tech/yougile-mcp/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11%E2%80%933.14-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -40,9 +41,7 @@ MCP-сервер, через который Claude и другие AI-ассис
 ### Быстрый старт
 
 Нужен [uv](https://docs.astral.sh/uv/getting-started/installation/) — он сам поставит Python.
-
-> Пока пакет не опубликован на PyPI, вместо `uvx yougile-mcp` пишите
-> `uvx --from git+https://github.com/indalo-tech/yougile-mcp yougile-mcp`.
+Пакет опубликован на [PyPI](https://pypi.org/project/yougile-mcp/), `uvx` скачает его сам.
 
 **1. Получите ключ API**
 
@@ -202,8 +201,8 @@ YOUGILE_API_KEY=ваш_ключ uvx yougile-mcp check
 - Установленную версию показывают `yougile-mcp --version` и `yougile-mcp check`.
 - Номера по [SemVer](https://semver.org/lang/ru/): до 1.0 новые возможности поднимают вторую
   цифру, исправления — третью.
-- Поставить конкретную версию:
-  `uvx --from git+https://github.com/indalo-tech/yougile-mcp@v0.2.0 yougile-mcp`.
+- Поставить конкретную версию: `uvx yougile-mcp@0.2.0`. Последнюю, минуя кэш uv:
+  `uvx yougile-mcp@latest`.
 
 ### Как это устроено
 
@@ -227,14 +226,13 @@ uv run --no-project python scripts/sync_spec.py   # обновить снимо�
 **Выпуск версии.** Поменяйте `__version__` в `src/yougile_mcp/__init__.py`, перенесите записи
 из `[Unreleased]` в новый раздел `CHANGELOG.md` (на двух языках), закоммитьте и отправьте тег:
 `git tag v0.3.0 && git push origin v0.3.0`. Workflow проверит, что тег совпадает с версией,
-прогонит тесты, соберёт пакет и опубликует GitHub Release с описанием из `CHANGELOG.md`,
-а если включена публикация на PyPI — и пакет на PyPI.
+прогонит тесты, соберёт пакет и опубликует GitHub Release с описанием из `CHANGELOG.md`
+и пакет на PyPI.
 
-**Публикация на PyPI** идёт через Trusted Publishing, без токенов. Один раз: на pypi.org в
-Account settings → Publishing добавьте publisher для GitHub — проект `yougile-mcp`, владелец
-`indalo-tech`, репозиторий `yougile-mcp`, workflow `release.yml`, environment `pypi`. Затем
-включите шаг: `gh variable set PUBLISH_PYPI --body true -R indalo-tech/yougile-mcp`.
-Уже выпущенную версию можно отправить на PyPI через Actions → Release → Run workflow с её тегом.
+**PyPI** получает пакет через Trusted Publishing — токенов нет: PyPI доверяет только workflow
+`release.yml` этого репозитория в environment `pypi`. Публикацию выключает переменная
+репозитория `PUBLISH_PYPI` (не `true`). Уже выпущенный тег можно отправить повторно через
+Actions → Release → Run workflow.
 
 ### Лицензия
 
@@ -271,11 +269,7 @@ tasks, boards, columns, chats, employees and stickers, on top of the official RE
 ### Quick start
 
 You need [uv](https://docs.astral.sh/uv/getting-started/installation/); it installs Python
-for you.
-
-> Until the package is on PyPI, use
-> `uvx --from git+https://github.com/indalo-tech/yougile-mcp yougile-mcp` instead of
-> `uvx yougile-mcp`.
+for you. The package is on [PyPI](https://pypi.org/project/yougile-mcp/); `uvx` fetches it.
 
 **1. Get an API key**
 
@@ -434,8 +428,8 @@ with `confirm=true` only after explicit consent.
 - `yougile-mcp --version` and `yougile-mcp check` show the installed version.
 - Numbers follow [SemVer](https://semver.org/): before 1.0, new features bump the second
   number and fixes the third.
-- Install a specific version:
-  `uvx --from git+https://github.com/indalo-tech/yougile-mcp@v0.2.0 yougile-mcp`.
+- Install a specific version: `uvx yougile-mcp@0.2.0`; the newest one, bypassing uv's cache:
+  `uvx yougile-mcp@latest`.
 
 ### How it works
 
@@ -460,13 +454,12 @@ HTTP transport for debugging: `uv run yougile-mcp serve --transport http --port 
 entries into a new `CHANGELOG.md` section (in both languages), commit and push a tag:
 `git tag v0.3.0 && git push origin v0.3.0`. The workflow checks that the tag matches the
 version, runs the tests, builds the package and publishes a GitHub Release with the notes from
-`CHANGELOG.md`, and the package on PyPI when PyPI publishing is enabled.
+`CHANGELOG.md` and the package on PyPI.
 
-**PyPI publishing** uses Trusted Publishing, no tokens. Once: on pypi.org under Account
-settings → Publishing add a GitHub publisher — project `yougile-mcp`, owner `indalo-tech`,
-repository `yougile-mcp`, workflow `release.yml`, environment `pypi`. Then enable the step:
-`gh variable set PUBLISH_PYPI --body true -R indalo-tech/yougile-mcp`. A version that is
-already released can be sent to PyPI via Actions → Release → Run workflow with its tag.
+**PyPI** receives the package via Trusted Publishing — there are no tokens: PyPI trusts only
+this repository's `release.yml` workflow in the `pypi` environment. The repository variable
+`PUBLISH_PYPI` (anything but `true`) turns publishing off. An already released tag can be
+published again via Actions → Release → Run workflow.
 
 ### License
 

@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+### Русский
+
+#### Изменено
+- Пакет опубликован на PyPI: README ставит его через `uvx yougile-mcp`, конкретную версию —
+  через `uvx yougile-mcp@0.2.0`.
+
+### English
+
+#### Changed
+- The package is on PyPI: README installs it with `uvx yougile-mcp`, a specific version with
+  `uvx yougile-mcp@0.2.0`.
+
 ## [0.2.0] — 2026-09-23
 
 ### Русский
