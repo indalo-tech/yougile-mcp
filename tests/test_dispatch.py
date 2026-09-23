@@ -73,3 +73,16 @@ def test_describe_and_hint():
     assert {"title", "columnId", "deadline", "timeTracking"} <= names
     assert "idempotencyKey" not in names
     assert "title" in error_hint(find("tasks.create"))
+
+
+def test_local_files_can_be_disabled(tmp_path):
+    file = tmp_path / "secret.env"
+    file.write_text("KEY=1")
+    with pytest.raises(ParamError, match="not available on this server"):
+        prepare(find("files.upload"), {"file_path": str(file)}, allow_local_files=False)
+    prep = prepare(
+        find("files.upload"),
+        {"content_base64": base64.b64encode(b"ok").decode(), "filename": "a.txt"},
+        allow_local_files=False,
+    )
+    assert prep.files["file"][1] == b"ok"

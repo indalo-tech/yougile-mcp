@@ -193,6 +193,7 @@ async def yougile_overview(
         "defaults": {"project": work.cfg.project, "board": work.cfg.board},
         "permissions": policy.summary(),
         "timezone": work.cfg.timezone,
+        **({"company_rules": work.cfg.instructions.strip()} if work.cfg.instructions else {}),
     }
 
 

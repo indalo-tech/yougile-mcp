@@ -38,7 +38,10 @@ class Prepared:
         )
 
 
-def prepare(op: Operation, params: dict[str, Any] | None) -> Prepared:
+def prepare(
+    op: Operation, params: dict[str, Any] | None, *, allow_local_files: bool = True
+) -> Prepared:
+    """``allow_local_files=False`` on hosted servers: a file_path would read the server's disk."""
     params = dict(params or {})
     explicit_query = params.pop("query", None) or {}
     explicit_body = params.pop("body", None) or {}
@@ -56,7 +59,7 @@ def prepare(op: Operation, params: dict[str, Any] | None) -> Prepared:
         path_values[p.name] = str(value)
 
     if op.is_multipart:
-        return _prepare_upload(op, params, path_values)
+        return _prepare_upload(op, params, path_values, allow_local_files)
 
     query_names = {p.name for p in op.query_params}
     body_fields = op.body_fields
@@ -91,7 +94,9 @@ def prepare(op: Operation, params: dict[str, Any] | None) -> Prepared:
     return Prepared(op, path, path_values, query, body if has_body else None)
 
 
-def _prepare_upload(op: Operation, params: dict[str, Any], path_values: dict[str, str]) -> Prepared:
+def _prepare_upload(
+    op: Operation, params: dict[str, Any], path_values: dict[str, str], allow_local_files: bool
+) -> Prepared:
     file_path = params.pop("file_path", None)
     content_b64 = params.pop("content_base64", None)
     filename = params.pop("filename", None)
@@ -99,6 +104,10 @@ def _prepare_upload(op: Operation, params: dict[str, Any], path_values: dict[str
         raise ParamError(
             f"{op.full_name}: unknown parameter(s) {', '.join(sorted(params))}. "
             "Allowed: file_path, or content_base64 + filename."
+        )
+    if file_path and not allow_local_files:
+        raise ParamError(
+            "file_path is not available on this server; pass content_base64 and filename"
         )
     if file_path:
         src = Path(str(file_path)).expanduser()

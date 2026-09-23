@@ -6,6 +6,8 @@ from typing import Annotated, Any, Literal
 
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
+from fastmcp.server.auth import AuthProvider
+from fastmcp.server.middleware import Middleware
 from fastmcp.tools import Tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
@@ -18,9 +20,10 @@ from .dispatch import describe
 BASE_INSTRUCTIONS = """\
 YouGile (task tracker). Two kinds of tools:
 - Task-level tools take names and numbers instead of UUIDs: yougile_overview (projects, \
-boards, columns), yougile_find_tasks, yougile_task (open a card), yougile_create_task, \
-yougile_update_task, yougile_move_task (follows Workflow chains), yougile_log_time, \
-yougile_task_chat. Prefer them for everyday work.
+boards, columns, your permissions and the company's rules — call it first), \
+yougile_find_tasks, yougile_task (open a card), yougile_create_task, yougile_update_task, \
+yougile_move_task (follows Workflow chains), yougile_log_time, yougile_task_chat. \
+Prefer them for everyday work.
 - Domain tools cover the whole REST API v2 (yougile_tasks, yougile_chats, yougile_boards, \
 yougile_columns, yougile_projects, yougile_users, yougile_stickers, yougile_company, \
 yougile_files, yougile_crm). Each takes `operation` and one flat `params` object holding path \
@@ -154,8 +157,24 @@ async def yougile_help(
     )
 
 
-def build_server(rt: runtime.Runtime | None = None) -> FastMCP:
-    mcp = FastMCP(name="yougile", instructions=instructions(rt), version=__version__)
+def build_server(
+    rt: runtime.Runtime | None = None,
+    *,
+    auth: AuthProvider | None = None,
+    middleware: list[Middleware] | None = None,
+    **fastmcp_options: Any,
+) -> FastMCP:
+    """The MCP server. Pass ``rt`` for a single-user server (local stdio); a hosted server
+    passes ``auth`` and a ``middleware`` that binds a runtime per request instead, plus any
+    other FastMCP options (e.g. ``lifespan``)."""
+    mcp = FastMCP(
+        name="yougile",
+        instructions=instructions(rt),
+        version=__version__,
+        auth=auth,
+        middleware=middleware,
+        **fastmcp_options,
+    )
     smart.register(mcp)
     for tool in TOOLS:
         mcp.add_tool(_domain_tool(tool))

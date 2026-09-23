@@ -24,6 +24,7 @@ class Runtime:
     config: WorkspaceConfig
     policy: Policy
     directory: Directory
+    allow_local_files: bool = True  # hosted servers set False: no reading of the server's disk
 
 
 _current: ContextVar[Runtime | None] = ContextVar("yougile_runtime", default=None)

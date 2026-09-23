@@ -7,11 +7,29 @@
 
 ### Русский
 
+#### Добавлено
+- Ядро можно встраивать в сервер для многих пользователей: `build_server()` принимает
+  `auth`, `middleware` и любые параметры FastMCP (например `lifespan`), а окружение каждого
+  запроса привязывается через ContextVar.
+- Флаг `Runtime.allow_local_files`: на сервере загрузка файла по локальному пути запрещена,
+  чтобы модель не могла выгрузить файлы самого сервера.
+- `yougile_overview` возвращает правила компании (`company_rules`); инструкции сервера
+  советуют начинать с него.
+
 #### Изменено
 - Пакет опубликован на PyPI: README ставит его через `uvx yougile-mcp`, конкретную версию —
   через `uvx yougile-mcp@0.2.0`.
 
 ### English
+
+#### Added
+- The core can be embedded in a multi-user server: `build_server()` takes `auth`,
+  `middleware` and any FastMCP option (e.g. `lifespan`); each request's runtime is bound
+  through a ContextVar.
+- `Runtime.allow_local_files`: hosted servers refuse uploads by local path, so a model cannot
+  exfiltrate the server's own files.
+- `yougile_overview` returns the company's rules (`company_rules`); the server instructions
+  suggest calling it first.
 
 #### Changed
 - The package is on PyPI: README installs it with `uvx yougile-mcp`, a specific version with

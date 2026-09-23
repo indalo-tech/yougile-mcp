@@ -118,7 +118,7 @@ class Caller:
         if op is None:
             raise ValueError(f"unknown catalog operation {operation}")
         rt = self.rt
-        prep = prepare(op, params)
+        prep = prepare(op, params, allow_local_files=rt.allow_local_files)
         rt.policy.check_static(op, prep.body)
         guard = await rt.policy.guard(op, prep, rt.client, rt.directory)
         pending = [t for t in guard.confirm_titles if t not in self.confirmed]

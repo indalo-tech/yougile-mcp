@@ -198,3 +198,9 @@ async def test_reader_role_cannot_write_via_task_tools(client_for, fake):
         with pytest.raises(ToolError, match="needs role"):
             await call(c, "yougile_log_time", task="ID-1", hours=1)
     assert fake.calls("PUT", "/api-v2/tasks/t-int") == 0
+
+
+async def test_overview_carries_company_rules(client_for):
+    async with client_for(instructions=["Пишите кратко."]) as c:
+        data = await call(c, "yougile_overview")
+    assert data["company_rules"] == "Пишите кратко."
