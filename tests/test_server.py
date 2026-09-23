@@ -20,7 +20,7 @@ def server_for(make_runtime):
 async def test_tools_are_listed_with_operation_enums(server_for):
     async with Client(server_for()) as client:
         tools = {t.name: t for t in await client.list_tools()}
-    assert len(tools) == 19
+    assert len(tools) == 20
     enum = tools["yougile_tasks"].input_schema["properties"]["operation"]["enum"]
     assert {"list", "get", "create", "update"} <= set(enum)
 

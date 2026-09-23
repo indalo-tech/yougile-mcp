@@ -143,6 +143,65 @@ async def test_create_task_with_names(client_for, fake):
     assert data["created"]["number"] == "ID-99"
 
 
+async def test_use_board_remembers_the_board_for_task_tools(make_runtime, fake):
+    saved = []
+
+    async def save(board_id):
+        saved.append(board_id)
+
+    rt = make_runtime(workflows=CHAIN)
+    rt.save_board = save
+    runtime.set_default(rt)
+    try:
+        async with Client(build_server(rt)) as c:
+            with pytest.raises(ToolError, match="board is required.*yougile_use_board"):
+                await call(c, "yougile_create_task", title="x")
+            data = await call(c, "yougile_use_board", board="Сайт", project="Разработка")
+            assert data == {
+                "default_board": "Разработка / Сайт",
+                "kept": "for this person in every conversation",
+            }
+            assert (await call(c, "yougile_overview"))["defaults"]["board"] == "Разработка / Сайт"
+            await call(c, "yougile_create_task", title="x")
+            assert fake.bodies("POST", "/api-v2/tasks")[-1]["columnId"] == "c-int-queue"
+            found = await call(c, "yougile_find_tasks", column="Очередь")
+            assert found["scope"] == "Разработка / Сайт / Очередь"
+            data = await call(c, "yougile_use_board")
+            assert data == {"default_board": None, "forgotten": True}
+            with pytest.raises(ToolError, match="board is required"):
+                await call(c, "yougile_create_task", title="y")
+    finally:
+        runtime.set_default(None)
+    assert saved == ["b-hub-int", None]
+    assert rt.board is None
+
+
+async def test_use_board_without_saving_lasts_until_restart(client_for):
+    async with client_for() as c:
+        data = await call(c, "yougile_use_board", board="Клиенты / Сайт")
+    assert data["kept"].startswith("until the server restarts") and ".yougile.json" in data["kept"]
+
+
+async def test_use_board_respects_the_project_allowlist(client_for):
+    async with client_for(projects=["Разработка"]) as c:
+        with pytest.raises(ToolError, match="Клиенты / Сайт is outside the projects"):
+            await call(c, "yougile_use_board", board="Клиенты / Сайт")
+
+
+async def test_explicit_project_beats_the_remembered_board(make_runtime):
+    rt = make_runtime(project="Клиенты", board="Сайт")
+    rt.board = "b-hub-int"
+    runtime.set_default(rt)
+    try:
+        async with Client(build_server(rt)) as c:
+            found = await call(c, "yougile_find_tasks", column="Очередь", project="Клиенты")
+            assert found["scope"] == "Клиенты / Сайт / Очередь"
+            found = await call(c, "yougile_find_tasks", column="Очередь")
+            assert found["scope"] == "Разработка / Сайт / Очередь", "the person's choice wins"
+    finally:
+        runtime.set_default(None)
+
+
 async def test_create_task_needs_a_column_without_workflow(client_for):
     async with client_for() as c:
         with pytest.raises(ToolError, match="column is required.*Очередь, В работе"):
@@ -203,8 +262,6 @@ async def test_hints_point_where_settings_live(make_runtime):
     runtime.set_default(rt)
     try:
         async with Client(build_server(rt)) as c:
-            with pytest.raises(ToolError, match="no default board is set in the admin page"):
-                await call(c, "yougile_create_task", title="x")
             with pytest.raises(ToolError, match=r"workflows setting \(the admin page"):
                 await call(c, "yougile_move_task", task="ID-1", column="Готово")
             data = await call(c, "yougile_overview")

@@ -18,6 +18,7 @@ from pydantic import Field
 from .caller import Caller, tool_errors
 from .client import YouGileError
 from .directory import Ambiguous, NotFound, Structure, _norm
+from .policy import PolicyError
 from .present import (
     format_ms,
     html_to_text,
@@ -71,10 +72,19 @@ class Work:
 
     async def board(self, board: str | None, project: str | None) -> dict:
         structure = await self.structure()
+        if not board and not project and self.rt.board:
+            chosen = structure.boards.get(self.rt.board)
+            if chosen is None:
+                raise ValueError(
+                    "the board chosen with yougile_use_board no longer exists or is hidden: "
+                    "pass board, or choose another default with yougile_use_board"
+                )
+            return chosen
         ref = board or self.cfg.board
         if not ref:
             raise ValueError(
-                f"board is required: no default board is set in {self.rt.settings_hint}"
+                "board is required: pass board, or remember the user's usual board with "
+                "yougile_use_board"
             )
         explicit_project = project is not None or "/" in ref
         scope = project if explicit_project else self.cfg.project
@@ -84,6 +94,13 @@ class Work:
             if explicit_project or scope is None:
                 raise
             return structure.find_board(ref)  # the default project was only a hint
+
+    def default_board_label(self, structure: Structure) -> str | None:
+        """The board tools fall back to: the person's choice, else the workspace default."""
+        if self.rt.board:
+            chosen = structure.boards.get(self.rt.board)
+            return structure.board_label(chosen) if chosen else None
+        return self.cfg.board
 
     def done_columns(self, structure: Structure) -> frozenset[str]:
         """Ids of the columns the workspace treats as done (a title, or "Project / Board /
@@ -229,7 +246,7 @@ async def yougile_overview(
         result.append(item)
     return {
         "projects": result,
-        "defaults": {"project": work.cfg.project, "board": work.cfg.board},
+        "defaults": {"project": work.cfg.project, "board": work.default_board_label(s)},
         "permissions": policy.summary(),
         "settings_in": work.rt.settings_hint,
         "timezone": work.cfg.timezone,
@@ -361,6 +378,46 @@ async def yougile_task(
     if messages:
         card["messages"] = await work.messages(t["id"], messages)
     return card
+
+
+@tool_errors
+async def yougile_use_board(
+    board: Annotated[
+        str | None,
+        Field(description='Board name or "Project / Board"; leave empty to forget the choice'),
+    ] = None,
+    project: Annotated[str | None, Field(description="Project name, if boards repeat")] = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Remember the board the user usually works on: task tools use it whenever they get
+    neither a board nor a project (creating a task, a column without a board). Call it when the
+    user says which board they work on or asks to remember it. Nothing changes in YouGile."""
+    work = Work(ctx)
+    rt = work.rt
+    chosen: dict | None = None
+    if board and board.strip():
+        s = await work.structure()
+        ref = board.strip()
+        chosen = s.find_board(ref, None if "/" in ref else project)
+        policy = rt.policy
+        if policy.project_refs is not None and chosen.get("projectId") not in (
+            policy.resolve_projects(policy.project_refs, s)
+        ):
+            raise PolicyError(
+                f"{s.board_label(chosen)} is outside the projects allowed for this session"
+            )
+    board_id = chosen["id"] if chosen else None
+    if rt.save_board is not None:
+        await rt.save_board(board_id)
+    rt.board = board_id
+    if chosen is None:
+        return {"default_board": work.cfg.board, "forgotten": True}
+    return {
+        "default_board": s.board_label(chosen),
+        "kept": "for this person in every conversation"
+        if rt.save_board is not None
+        else f'until the server restarts; set "board" in {rt.settings_hint} to keep it',
+    }
 
 
 @tool_errors
@@ -643,3 +700,12 @@ def register(mcp: FastMCP) -> None:
                 fn, output_schema=None, annotations=ToolAnnotations(destructive_hint=False)
             )
         )
+    mcp.add_tool(
+        Tool.from_function(
+            yougile_use_board,
+            output_schema=None,
+            annotations=ToolAnnotations(
+                destructive_hint=False, idempotent_hint=True, open_world_hint=False
+            ),
+        )
+    )

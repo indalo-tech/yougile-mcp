@@ -24,7 +24,8 @@ boards, columns, your permissions, where settings are changed and the company's 
 call it first), \
 yougile_find_tasks, yougile_task (open a card), yougile_create_task, yougile_update_task, \
 yougile_move_task (follows Workflow chains), yougile_log_time, yougile_task_chat. \
-Prefer them for everyday work.
+Prefer them for everyday work. When the user says which board they work on, remember it with \
+yougile_use_board, so later requests need no board.
 - Domain tools cover the whole REST API v2 (yougile_tasks, yougile_chats, yougile_boards, \
 yougile_columns, yougile_projects, yougile_users, yougile_stickers, yougile_company, \
 yougile_files, yougile_crm). Each takes `operation` and one flat `params` object holding path \

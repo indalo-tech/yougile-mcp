@@ -5,6 +5,34 @@
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-09-23
+
+### Русский
+
+#### Добавлено
+- `yougile_use_board` — запомнить доску, с которой человек обычно работает. Инструменты задач
+  берут её, когда не указаны ни доска, ни проект (создать задачу, колонка без доски);
+  `yougile_overview` показывает её в `defaults`. Без доски — забыть выбор. Локально выбор живёт
+  до перезапуска сервера; сервер может хранить его за человеком (`Runtime.board`,
+  `Runtime.save_board`).
+
+#### Изменено
+- Ошибка «нужна доска» предлагает передать доску или запомнить её через `yougile_use_board`,
+  а не отправляет в настройки.
+
+### English
+
+#### Added
+- `yougile_use_board` remembers the board the person usually works on. Task tools use it when
+  they get neither a board nor a project (creating a task, a column without a board);
+  `yougile_overview` shows it under `defaults`. Without a board it forgets the choice. Locally
+  the choice lasts until the server restarts; a hosted server can keep it per person
+  (`Runtime.board`, `Runtime.save_board`).
+
+#### Changed
+- The "board is required" error suggests passing a board or remembering one with
+  `yougile_use_board` instead of sending people to the settings.
+
 ## [0.5.1] — 2026-09-23
 
 ### Русский
@@ -220,7 +248,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.3.1...v0.4.0

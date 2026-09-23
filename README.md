@@ -104,6 +104,7 @@ YOUGILE_API_KEY=ваш_ключ uvx yougile-mcp check
 | `yougile_move_task` | перенести в другую колонку; на досках с Workflow проходит все промежуточные колонки |
 | `yougile_log_time` | прибавить часы к факту, не трогая план |
 | `yougile_task_chat` | последние сообщения с именами авторов, отправка сообщения |
+| `yougile_use_board` | запомнить доску, с которой вы работаете: дальше задачи создаются там без указания доски |
 
 Даты пишутся как `2026-09-30` или `30.09.2026`, со временем — `2026-09-30 18:00`. Дата без
 времени сохраняется как полночь по часовому поясу компании — так же, как в интерфейсе YouGile.
@@ -361,6 +362,7 @@ They take names and numbers and show names and dates. Start with them for everyd
 | `yougile_move_task` | move to another column; on Workflow boards it passes every intermediate column |
 | `yougile_log_time` | add worked hours, keeping the plan |
 | `yougile_task_chat` | latest messages with author names, post a message |
+| `yougile_use_board` | remember the board you work on, so tasks go there without naming the board |
 
 Dates are written as `2026-09-30` or `30.09.2026`, with time as `2026-09-30 18:00`. A date
 without time is stored as midnight in the company time zone, just as the YouGile UI does.

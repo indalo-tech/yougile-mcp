@@ -8,6 +8,7 @@ server simply installs one default runtime.
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Awaitable, Callable
 from contextvars import ContextVar, Token
 from dataclasses import dataclass
 
@@ -28,6 +29,11 @@ class Runtime:
     # Where people change this session's workspace settings (default board, Workflow chains);
     # error messages send them there. A hosted server names its admin page instead.
     settings_hint: str = ".yougile.json"
+    # The board id the person chose with yougile_use_board; it wins over the workspace default
+    # when a tool gets neither board nor project. A hosted server loads it per user and keeps
+    # it through save_board; without save_board it lasts until the server restarts.
+    board: str | None = None
+    save_board: Callable[[str | None], Awaitable[None]] | None = None
 
 
 _current: ContextVar[Runtime | None] = ContextVar("yougile_runtime", default=None)
