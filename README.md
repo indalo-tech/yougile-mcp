@@ -142,6 +142,9 @@ YouGile хранит часы только суммой по задаче, бе�
 | `yougile_show_task` | карточка задачи: статус, исполнители, срок, часы, чек-лист, описание, чат; кнопки «Выполнено», «Взять себе», перенос в колонку (по цепочке Workflow), отметки чек-листа, списание часов, сообщение в чат |
 | `yougile_show_board` | доска: колонки рядом с карточками задач, фильтр по исполнителю, стрелки ← → для переноса в соседнюю колонку, карточка по клику |
 | `yougile_new_task_form` | форма новой задачи: доска, колонка, название, описание, исполнитель, срок, план часов, чек-лист; модель заполняет, что знает, вы проверяете и создаёте кнопкой |
+| `yougile_show_standup` | стендап: метрики, «Вчера», «Сегодня — в работе», «Блокеры и риски», «Дальше по очереди» и готовый текст; кнопка «Отправить в чат» передаёт его в разговор |
+| `yougile_show_hours` | часы за период: план и факт графиками по людям и проектам, перерасход, выполненные без плана, открытые со списанными часами; период меняется на экране |
+| `yougile_show_triage` | разбор очереди: у каждой задачи — проблемы (нет исполнителя, срока, плана, просрочена), правка исполнителя, срока и плана прямо в строке, загрузка людей на доске |
 
 Кнопки действуют с правами сессии, кнопок без прав нет. Нажатие — это ваше подтверждение: запись
 в проект из `confirm_projects` проходит без повторного вопроса, а на карточке такого проекта
@@ -437,6 +440,9 @@ the model.
 | `yougile_show_task` | a task card: status, assignees, deadline, hours, checklist, description, chat; buttons to complete, take, move to a column (along the Workflow chain), tick checklist items, log hours and post to the chat |
 | `yougile_show_board` | a board: columns side by side with task cards, a filter by assignee, ← → arrows to move a card to the neighbouring column, the card on click |
 | `yougile_new_task_form` | a new-task form: board, column, title, description, assignee, deadline, planned hours, checklist; the model fills in what it knows, you check and create it with a button |
+| `yougile_show_standup` | a stand-up: counts, done since the previous working day, in progress, blockers and risks, next in the queue, and a ready text; Send to chat passes it to the conversation |
+| `yougile_show_hours` | hours for a period: planned vs worked as charts by person and project, overruns, completed without a plan, open with logged hours; the period changes on the screen |
+| `yougile_show_triage` | queue triage: each task's problems (no assignee, deadline or plan, overdue), the assignee, deadline and plan edited right in the row, people's load on the board |
 
 Buttons act with the session's permissions, and buttons without them are not shown. A click is
 your confirmation: a write into a project from `confirm_projects` goes ahead without asking

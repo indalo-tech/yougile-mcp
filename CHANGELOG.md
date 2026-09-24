@@ -5,6 +5,44 @@
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-09-24
+
+### Русский
+
+#### Добавлено
+- Экран `yougile_show_standup` — стендап: метрики (сделано, в работе, в очереди, просрочено),
+  разделы «Вчера» (выполнено с прошлого рабочего дня), «Сегодня — в работе» (колонки вроде
+  «В работе», «На проверке»), «Блокеры и риски» (просроченные, в работе без срока), «Дальше по
+  очереди» и готовый текст для команды. Кнопка «Отправить в чат» передаёт текст в разговор.
+- Экран `yougile_show_hours` — часы за период (по умолчанию с понедельника): итоги план / факт /
+  отклонение, графики по людям и по проектам, таблицы перерасхода, выполненных без плана и
+  открытых со списанными часами. Период меняется на экране. Часы задачи с несколькими
+  исполнителями делятся между ними поровну.
+- Экран `yougile_show_triage` — разбор очереди доски (колонка из запроса, первая колонка
+  цепочки Workflow или колонка вроде «Очередь»): проблемы каждой задачи, метрики, загрузка
+  людей на доске (открытые задачи и план часов) и правка прямо в строке — добавить исполнителя,
+  поставить срок и план. Сохраняется только изменённое.
+- Кнопки экранов: `yougile_app_standup`, `yougile_app_hours`, `yougile_app_triage`,
+  `yougile_app_triage_save`.
+
+### English
+
+#### Added
+- The `yougile_show_standup` screen — a stand-up: counts (done, in progress, in the queue,
+  overdue), sections for work done since the previous working day, in progress (columns like
+  "In progress", "Review"), blockers and risks (overdue, in progress without a deadline), next in
+  the queue, and a ready text for the team. Send to chat passes the text to the conversation.
+- The `yougile_show_hours` screen — hours for a period (from Monday by default): planned /
+  worked / deviation totals, charts by person and by project, tables of overruns, tasks
+  completed without a plan and open tasks with logged hours. The period changes on the screen.
+  A task with several assignees splits its hours evenly between them.
+- The `yougile_show_triage` screen — a board's queue triage (the given column, the first column
+  of the Workflow chain, or a column like «Очередь»): each task's problems, counts, people's
+  load on the board (open tasks and planned hours) and editing right in the row — add an
+  assignee, set the deadline and the plan. Only what changed is saved.
+- Tools behind the buttons: `yougile_app_standup`, `yougile_app_hours`, `yougile_app_triage`,
+  `yougile_app_triage_save`.
+
 ## [0.13.0] — 2026-09-24
 
 ### Русский
@@ -472,7 +510,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.11.0...v0.12.0

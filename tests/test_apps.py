@@ -182,3 +182,75 @@ async def test_form_prefills_and_creates_the_task(server_for, fake):
     assert task["timeTracking"] == {"plan": 2.5, "work": 0} and "description" not in task
     assert [i["title"] for i in task["checklists"][0]["items"]] == ["Собрать данные", "Написать"]
     assert created.structured_content["number"] == "ID-99"
+
+
+async def test_standup_screen_sorts_the_open_work(server_for):
+    async with drawing(server_for()) as client:
+        result = await client.call_tool("yougile_show_standup", {"person": "Иван"})
+        again = await client.call_tool("yougile_app_standup", {"person": "u-ivan"})
+    standup = result.structured_content["state"]["standup"]
+    assert standup["name"] == "Иван Петров" and standup["person"] == "u-ivan"
+    assert [i["code"] for i in standup["queue"]] == ["ID-1"] and standup["doing"] == []
+    assert "**Вчера:**" in standup["text"] and "**Блокеры и риски:**" in standup["text"]
+    assert json.loads(result.content[0].text)["queue"] == ["ID-1 Internal"]
+    assert again.structured_content["counts"] == standup["counts"]
+
+
+async def test_hours_screen_counts_the_period_and_open_work(server_for):
+    async with drawing(server_for()) as client:
+        result = await client.call_tool(
+            "yougile_show_hours", {"since": "2026-09-01", "until": "30.09.2026"}
+        )
+        other = await client.call_tool(
+            "yougile_app_hours", {"since": "2026-10-01", "until": "2026-10-31"}
+        )
+    report = result.structured_content["state"]["report"]
+    assert (report["since"], report["until"]) == ("2026-09-01", "2026-09-30")
+    assert report["totals"]["tasks"] == 1  # ID-3, completed on 28.09
+    assert report["by_person"] == [{"name": "Без исполнителя", "plan": 0.0, "work": 0.0}]
+    assert [r["code"] for r in report["no_plan"]] == ["ID-3"]
+    assert report["logged"] == [
+        {"code": "ID-1", "title": "Internal", "plan": 5.0, "work": 3.0, "left": 2.0}
+    ]
+    assert other.structured_content["totals"]["tasks"] == 0
+
+
+async def test_triage_screen_and_row_edit(server_for, fake):
+    async with drawing(server_for(workflows=CHAIN)) as client:
+        result = await client.call_tool("yougile_show_triage", {"board": "Разработка / Сайт"})
+        saved = await client.call_tool(
+            "yougile_app_triage_save",
+            {
+                "task": "t-int",
+                "board": "b-hub-int",
+                "column": "c-int-queue",
+                "assignee": "u-me",
+                "deadline": "2026-10-15",
+                "plan_hours": "8",
+            },
+        )
+    triage = result.structured_content["state"]["triage"]
+    assert triage["label"] == "Разработка / Сайт / Очередь"
+    row = triage["rows"][0]
+    assert row["code"] == "ID-1" and row["assignee_id"] == "u-ivan" and row["plan"] == "5"
+    assert not {"нет исполнителя", "нет срока", "нет плана"} & set(row["problems"])
+    assert {"name": "Иван Петров", "tasks": 1, "plan": 5.0} in triage["load"]
+    task = fake.tasks["t-int"]
+    assert task["assigned"] == ["u-ivan", "u-me"] and task["timeTracking"]["plan"] == 8
+    assert saved.structured_content["rows"][0]["deadline"] == "2026-10-15"
+
+
+async def test_triage_save_changes_nothing_when_nothing_changed(server_for, fake):
+    async with drawing(server_for(workflows=CHAIN)) as client:
+        await client.call_tool(
+            "yougile_app_triage_save",
+            {
+                "task": "t-int",
+                "board": "b-hub-int",
+                "column": "c-int-queue",
+                "assignee": "u-ivan",
+                "deadline": "2026-09-30",
+                "plan_hours": "5",
+            },
+        )
+    assert fake.calls("PUT", "/api-v2/tasks/t-int") == 0

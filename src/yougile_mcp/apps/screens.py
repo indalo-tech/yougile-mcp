@@ -41,6 +41,8 @@ from ..smart import TaskRef, Work, search_tasks
 from . import data
 
 TABLE_PAGE = 20  # rows per page in the task table
+# A task title that opens its card: a button that reads like a heading.
+TITLE_LINK = "h-auto p-0 justify-start text-left whitespace-normal font-medium"
 
 
 def on_error() -> ShowToast:

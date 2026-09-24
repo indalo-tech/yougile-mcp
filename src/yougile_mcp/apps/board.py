@@ -27,7 +27,7 @@ from pydantic import Field
 from ..caller import tool_errors
 from ..smart import Work
 from . import data
-from .screens import add_screens, card_view, display_toggle, on_error, screen
+from .screens import TITLE_LINK, add_screens, card_view, display_toggle, on_error, screen
 
 
 def refresh(assignee: str = "{{ who }}") -> CallTool:
@@ -76,7 +76,7 @@ def board_view(people: list[dict[str, str]]) -> Column:
                     f"{task.code} {task.title}",
                     variant="ghost",
                     size="sm",
-                    css_class="h-auto p-0 justify-start text-left whitespace-normal font-medium",
+                    css_class=TITLE_LINK,
                     on_click=CallTool(
                         "yougile_app_task",
                         arguments={"task": f"{task.id}"},
