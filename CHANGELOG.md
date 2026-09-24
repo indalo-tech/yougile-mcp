@@ -5,6 +5,27 @@
 
 ## [Unreleased]
 
+## [0.12.1] — 2026-09-24
+
+### Русский
+
+#### Добавлено
+- Кнопка «Развернуть» / «Свернуть» на экранах: просит у клиента показать экран на всё окно
+  (режим MCP Apps `fullscreen`) и вернуть обратно. Сработает ли, решает клиент.
+
+#### Изменено
+- В таблице задач колонка «Где» стала «Колонкой» и не повторяет проект или доску из заголовка.
+
+### English
+
+#### Added
+- An Expand / Collapse button on the screens: asks the client to show the screen in the whole
+  window (MCP Apps `fullscreen` mode) and back. Whether it does is up to the client.
+
+#### Changed
+- In the task table the "where" column is now "Column" and no longer repeats the project or
+  board named in the title.
+
 ## [0.12.0] — 2026-09-24
 
 ### Русский
@@ -420,7 +441,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.9.1...v0.10.0

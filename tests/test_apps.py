@@ -114,3 +114,12 @@ async def test_buttons_still_obey_the_policy(server_for, fake):
         with pytest.raises(ToolError, match="outside the projects"):
             await client.call_tool("yougile_app_complete", {"task": "t-cli", "completed": True})
     assert "completed" not in fake.tasks["t-cli"]
+
+
+async def test_screens_can_ask_for_the_whole_window(server_for):
+    async with drawing(server_for()) as client:
+        card = await client.call_tool("yougile_show_task", {"task": "ID-1"})
+        table = await client.call_tool("yougile_show_tasks", {"board": "Разработка / Сайт"})
+    for result in (card, table):
+        view = json.dumps(result.structured_content["view"])
+        assert '"mode": "fullscreen"' in view and '"mode": "inline"' in view

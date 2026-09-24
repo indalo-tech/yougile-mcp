@@ -138,7 +138,7 @@ YouGile хранит часы только суммой по задаче, бе�
 
 | экран | что на нём |
 |---|---|
-| `yougile_show_tasks` | таблица задач с поиском и сортировкой (фильтры как у `yougile_find_tasks`); строка открывает карточку, кнопка «Обновить» |
+| `yougile_show_tasks` | таблица задач с поиском и сортировкой (фильтры как у `yougile_find_tasks`); строка открывает карточку, кнопка «Обновить»; «Развернуть» — на всё окно, если клиент это умеет |
 | `yougile_show_task` | карточка задачи: статус, исполнители, срок, часы, чек-лист, описание, чат; кнопки «Выполнено», «Взять себе», перенос в колонку (по цепочке Workflow), отметки чек-листа, списание часов, сообщение в чат |
 
 Кнопки действуют с правами сессии, кнопок без прав нет. Нажатие — это ваше подтверждение: запись
@@ -431,7 +431,7 @@ the model.
 
 | screen | what it shows |
 |---|---|
-| `yougile_show_tasks` | a task table with search and sorting (filters as in `yougile_find_tasks`); a row opens the card; a Refresh button |
+| `yougile_show_tasks` | a task table with search and sorting (filters as in `yougile_find_tasks`); a row opens the card; a Refresh button; Expand for the whole window, if the client can |
 | `yougile_show_task` | a task card: status, assignees, deadline, hours, checklist, description, chat; buttons to complete, take, move to a column (along the Workflow chain), tick checklist items, log hours and post to the chat |
 
 Buttons act with the session's permissions, and buttons without them are not shown. A click is

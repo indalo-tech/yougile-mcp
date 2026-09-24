@@ -10,7 +10,7 @@ from fastmcp.apps.config import AppConfig, app_config_to_meta_dict
 from fastmcp.server.providers.prefab_synthesis import PREFAB_PLACEHOLDER_URI
 from fastmcp.tools import Tool, ToolResult
 from mcp.types import TextContent, ToolAnnotations
-from prefab_ui.actions import Action, CallTool, SetState, ShowToast
+from prefab_ui.actions import Action, CallTool, RequestDisplayMode, SetState, ShowToast
 from prefab_ui.app import PrefabApp
 from prefab_ui.components import (
     Badge,
@@ -55,6 +55,16 @@ def act(tool: str, arguments: dict[str, Any], *then: Action, done: str = "Гот
         on_success=[SetState("task", RESULT), *then, ShowToast(done, variant="success")],
         on_error=on_error(),
     )
+
+
+def display_toggle() -> None:
+    """A button that asks the host for the whole window and back; the host may refuse."""
+    with If(Rx("$host.displayMode") == "fullscreen"):
+        Button("Свернуть", variant="outline", size="sm", on_click=RequestDisplayMode("inline"))
+    with Else():
+        Button(
+            "Развернуть", variant="outline", size="sm", on_click=RequestDisplayMode("fullscreen")
+        )
 
 
 def card_view(*then: Action) -> Card:
@@ -204,9 +214,13 @@ async def yougile_show_task(task: TaskRef, ctx: Context | None = None) -> ToolRe
     work = Work(ctx)
     state = await data.card(work, task)
     shown = {"shown_to_user": "task card", **data.card_for_model(state)}
+    with Column(gap=2) as view:
+        with Row(justify="end"):
+            display_toggle()
+        card_view()
     return screen(
         f"{state['number']} {state['title']}",
-        card_view(),
+        view,
         {"task": state, "can": data.rights(work), "hours_input": "", "message_input": ""},
         shown,
     )
@@ -251,7 +265,9 @@ async def yougile_show_tasks(
     with Column(gap=4) as view:
         with Row(gap=2, align="center", justify="between"):
             Muted("{{ scope }}: {{ count }}")
-            Button("Обновить", variant="outline", size="sm", on_click=refresh)
+            with Row(gap=2):
+                Button("Обновить", variant="outline", size="sm", on_click=refresh)
+                display_toggle()
         DataTable(
             columns=[
                 DataTableColumn(key="number", header="Номер", sortable=True, width="90px"),
