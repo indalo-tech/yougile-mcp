@@ -15,6 +15,8 @@ from collections import deque
 from pathlib import Path
 from typing import Protocol
 
+from . import progress
+
 log = logging.getLogger(__name__)
 
 DEFAULT_LIMIT = 45  # headroom below YouGile's 50/min for people using the web UI meanwhile
@@ -63,6 +65,7 @@ class MemoryRateLimiter:
                 wait = self._wait_time(time.time())
             if wait <= 0:
                 return
+            await progress.report(progress.rate_limit_note(wait))
             await asyncio.sleep(min(wait, MAX_SLEEP))
 
     async def penalize(self, seconds: float) -> None:
@@ -131,6 +134,7 @@ class SqliteRateLimiter:
             wait = await asyncio.to_thread(self._try_acquire)
             if wait <= 0:
                 return
+            await progress.report(progress.rate_limit_note(wait))
             await asyncio.sleep(min(wait, MAX_SLEEP))
 
     async def penalize(self, seconds: float) -> None:

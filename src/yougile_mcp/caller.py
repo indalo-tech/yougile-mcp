@@ -16,7 +16,7 @@ from fastmcp import Context
 from fastmcp.exceptions import ToolError
 from mcp.types import ElicitRequest, ElicitRequestFormParams, InputRequiredResult
 
-from . import runtime
+from . import progress, runtime
 from .budget import DEFAULT_MAX_CHARS, fit
 from .catalog import find
 from .client import YouGileError
@@ -240,6 +240,7 @@ def tool_errors(fn: Callable[P, Awaitable[Any]]) -> Callable[P, Awaitable[Any]]:
         if declined:
             return {"cancelled": True, "reason": "the user did not choose"}
         token = bind_choices(choices)
+        reporting = progress.bind(ctx)
         try:
             while True:
                 try:
@@ -275,6 +276,7 @@ def tool_errors(fn: Callable[P, Awaitable[Any]]) -> Callable[P, Awaitable[Any]]:
         except YouGileError as exc:
             raise ToolError(describe_api_error(exc)) from exc
         finally:
+            progress.reset(reporting)
             reset_choices(token)
 
     return wrapper

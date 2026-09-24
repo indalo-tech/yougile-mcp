@@ -5,6 +5,26 @@
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-09-24
+
+### Русский
+
+#### Добавлено
+- Прогресс долгих операций (уведомления MCP progress, если клиент их просит): ожидание лимита
+  YouGile («Жду лимит YouGile… ещё около N с»), постраничная загрузка задач, шаги переноса
+  по цепочке Workflow, загрузка структуры компании. Сообщения по-русски — их видит человек.
+  Модуль `progress`: любой слой зовёт `progress.report(...)`, серверный ограничитель запросов
+  может делать так же (`progress.rate_limit_note`).
+
+### English
+
+#### Added
+- Progress for long operations (MCP progress notifications, when the client asks for them):
+  waiting for YouGile's rate limit, loading tasks page by page, Workflow chain steps, loading
+  the company structure. Messages are in Russian, since people read them. The `progress`
+  module lets any layer call `progress.report(...)`; a hosted rate limiter can do the same
+  (`progress.rate_limit_note`).
+
 ## [0.9.1] — 2026-09-24
 
 ### Русский
@@ -338,7 +358,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.7.0...v0.8.0

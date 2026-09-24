@@ -12,6 +12,7 @@ from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
 from typing import Any
 
+from . import progress
 from .client import YouGileClient
 
 DEFAULT_TTL = 300.0
@@ -173,6 +174,7 @@ class Directory:
         async with self._lock:
             now = time.monotonic()
             if refresh or self._structure is None or now - self._structure.loaded_at > self.ttl:
+                await progress.report("Загружаю проекты, доски и колонки компании")
                 projects = await fetch_all(self.client, "/projects")
                 boards = await fetch_all(self.client, "/boards")
                 columns = await fetch_all(self.client, "/columns")

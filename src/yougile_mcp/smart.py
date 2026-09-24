@@ -15,6 +15,7 @@ from fastmcp.tools import Tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
+from . import progress
 from .caller import Caller, tool_errors
 from .client import YouGileError
 from .directory import Ambiguous, NotFound, Structure, _norm
@@ -145,6 +146,7 @@ class Work:
             tasks.extend(content)
             if not (page or {}).get("paging", {}).get("next") or not content:
                 return tasks, False
+            await progress.report(f"Загружено задач: {len(tasks)}, загружаю дальше")
         return tasks, True
 
     async def messages(self, chat_id: str, limit: int) -> list[dict]:
@@ -598,7 +600,11 @@ async def yougile_move_task(
     elif current in done_ids and target not in done_ids and t.get("completed"):
         finish["completed"] = False
     done: list[str] = []
-    for step in path:
+    for n, step in enumerate(path, 1):
+        if len(path) > 1:
+            await progress.report(
+                f"{work.number(t)}: шаг {n} из {len(path)} — «{s.columns[step].get('title')}»"
+            )
         body = {"id": t["id"], "columnId": step, **(finish if step == path[-1] else {})}
         try:
             await work.caller.call("tasks.update", body)
