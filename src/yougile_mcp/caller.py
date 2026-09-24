@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import functools
 import json
+import re
 from collections.abc import Awaitable, Callable
 from typing import Any, ParamSpec
 
@@ -26,6 +27,7 @@ from .dispatch import ParamError, Prepared, error_hint, prepare
 from .policy import PolicyError
 
 MODERN_PROTOCOL = "2026-07-28"
+TASK_NUMBER = re.compile(r"^[A-Za-zА-Яа-яЁё]+-\d+$")  # ID-123, DEV-12
 STRUCTURE_TOOLS = {"projects", "boards", "columns"}
 
 
@@ -183,11 +185,24 @@ class Caller:
     def config(self):  # noqa: ANN201 - convenience
         return self.rt.config
 
+    async def _chat_of_task(self, op: Any, params: dict[str, Any] | None) -> dict[str, Any] | None:
+        """A task's chat is addressed by the task's id; YouGile's chat paths do not take the
+        task number (ID-123) the task paths do, so a number is looked up first."""
+        if op.tool != "chats" or "{chatId}" not in op.path or not params:
+            return params
+        key = "chatId" if "chatId" in params else "id"
+        ref = str(params.get(key) or "").strip()
+        if not TASK_NUMBER.match(ref):
+            return params
+        task = await self.rt.client.request("GET", f"/tasks/{ref}")
+        return {**params, key: task["id"]}
+
     async def call(self, operation: str, params: dict[str, Any] | None = None) -> Any:
         op = find(operation)
         if op is None:
             raise ValueError(f"unknown catalog operation {operation}")
         rt = self.rt
+        params = await self._chat_of_task(op, params)
         prep = prepare(op, params, allow_local_files=rt.allow_local_files)
         rt.policy.check_static(op, prep.body)
         guard = await rt.policy.guard(op, prep, rt.client, rt.directory)

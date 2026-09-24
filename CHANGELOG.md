@@ -5,6 +5,43 @@
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-09-24
+
+### Русский
+
+#### Добавлено
+- Экран `yougile_attach_files` — файлы в задачу: перетащите до 10 файлов (каждый до 10 МБ) и,
+  если нужно, комментарий; кнопка загружает их в YouGile и отправляет в чат задачи вложениями,
+  а экран показывает ссылки. Файлы идут из браузера прямо на сервер, минуя модель, поэтому
+  прикреплять файлы можно и в облаке, где путь к файлу на диске закрыт.
+- Инструмент `yougile_attach_file` — прикрепить файл к задаче одним вызовом: загрузка в YouGile
+  и сообщение-вложение в чат задачи, можно с комментарием. Файл — путь на этом компьютере
+  (локальный сервер) или содержимое в base64. Виден тем, кому можно загружать файлы и писать в
+  чаты.
+- Кнопка экрана: `yougile_app_attach`.
+
+#### Исправлено
+- Инструменты чатов принимают номер задачи (`chatId: "ID-123"`): чаты YouGile понимают только
+  id задачи, поэтому номер сначала переводится в id. Раньше такой вызов давал 404.
+
+### English
+
+#### Added
+- The `yougile_attach_files` screen — files for a task: drop up to 10 files (each up to 10 MB)
+  and an optional comment; the button uploads them to YouGile and posts them into the task's
+  chat as attachments, and the screen shows their links. Files go from the browser straight to
+  the server, not through the model, so files can be attached on the hosted server too, where
+  a path on disk is closed.
+- The `yougile_attach_file` tool — attach a file to a task in one call: the upload to YouGile
+  and an attachment message in the task's chat, optionally with a comment. The file is a path
+  on this computer (local server) or base64 content. Shown to sessions that may upload files
+  and post to chats.
+- Tool behind the button: `yougile_app_attach`.
+
+#### Fixed
+- Chat tools accept a task number (`chatId: "ID-123"`): YouGile's chats take only the task's
+  id, so the number is looked up first. Such calls used to return 404.
+
 ## [0.14.0] — 2026-09-24
 
 ### Русский
@@ -510,7 +547,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.12.0...v0.12.1

@@ -104,6 +104,7 @@ class FakeYouGile:
         self.overrides: dict[tuple[str, str], Callable[[httpx2.Request], httpx2.Response]] = {}
         self.tasks = copy.deepcopy(TASKS)
         self.messages = copy.deepcopy(MESSAGES)
+        self.uploads: list[str] = []
 
     def body(self, index: int = -1) -> Any:
         return json.loads(self.requests[index].content or b"null")
@@ -131,7 +132,8 @@ class FakeYouGile:
         if (method, path) in self.overrides:
             return self.overrides[(method, path)](request)
         parts = path.strip("/").split("/")
-        body = json.loads(request.content) if request.content else None
+        multipart = request.headers.get("content-type", "").startswith("multipart/")
+        body = json.loads(request.content) if request.content and not multipart else None
 
         if method == "GET":
             static = {
@@ -180,6 +182,12 @@ class FakeYouGile:
             task.update(body or {})
             return ok({"id": task["id"]})
 
+        if method == "POST" and path == "/upload-file":
+            # multipart: the file name is in the part's Content-Disposition header
+            name = request.content.split(b'filename="', 1)[1].split(b'"', 1)[0].decode()
+            self.uploads.append(name)
+            url = f"/user-data/company/{name}"
+            return ok({"result": "ok", "url": url, "fullUrl": "https://yougile.test" + url})
         if method == "POST" and path == "/tasks":
             new = {"id": "t-new", "idTaskCommon": "ID-99", **(body or {})}
             new.pop("idempotencyKey", None)

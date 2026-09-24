@@ -106,6 +106,7 @@ YOUGILE_API_KEY=ваш_ключ uvx yougile-mcp check
 | `yougile_move_task` | перенести в другую колонку; на досках с Workflow проходит все промежуточные колонки |
 | `yougile_log_time` | прибавить часы к факту, не трогая план |
 | `yougile_task_chat` | последние сообщения с именами авторов, отправка сообщения |
+| `yougile_attach_file` | прикрепить файл к задаче: загрузить в YouGile и отправить в чат задачи вложением, можно с комментарием; файл — путь на этом компьютере (локальный сервер) или содержимое в base64 |
 | `yougile_use_board` | запомнить доску, с которой вы работаете: дальше задачи создаются там без указания доски |
 
 Даты пишутся как `2026-09-30` или `30.09.2026`, со временем — `2026-09-30 18:00`. Дата без
@@ -145,6 +146,7 @@ YouGile хранит часы только суммой по задаче, бе�
 | `yougile_show_standup` | стендап: метрики, «Вчера», «Сегодня — в работе», «Блокеры и риски», «Дальше по очереди» и готовый текст; кнопка «Отправить в чат» передаёт его в разговор |
 | `yougile_show_hours` | часы за период: план и факт графиками по людям и проектам, перерасход, выполненные без плана, открытые со списанными часами; период меняется на экране |
 | `yougile_show_triage` | разбор очереди: у каждой задачи — проблемы (нет исполнителя, срока, плана, просрочена), правка исполнителя, срока и плана прямо в строке, загрузка людей на доске |
+| `yougile_attach_files` | файлы в задачу: перетащите файлы (до 10, каждый до 10 МБ), добавьте комментарий — они загрузятся в YouGile и появятся в чате задачи вложениями |
 
 Кнопки действуют с правами сессии, кнопок без прав нет. Нажатие — это ваше подтверждение: запись
 в проект из `confirm_projects` проходит без повторного вопроса, а на карточке такого проекта
@@ -403,6 +405,7 @@ They take names and numbers and show names and dates. Start with them for everyd
 | `yougile_move_task` | move to another column; on Workflow boards it passes every intermediate column |
 | `yougile_log_time` | add worked hours, keeping the plan |
 | `yougile_task_chat` | latest messages with author names, post a message |
+| `yougile_attach_file` | attach a file to a task: upload it to YouGile and post it into the task's chat as an attachment, optionally with a comment; the file is a path on this computer (local server) or base64 content |
 | `yougile_use_board` | remember the board you work on, so tasks go there without naming the board |
 
 Dates are written as `2026-09-30` or `30.09.2026`, with time as `2026-09-30 18:00`. A date
@@ -443,6 +446,7 @@ the model.
 | `yougile_show_standup` | a stand-up: counts, done since the previous working day, in progress, blockers and risks, next in the queue, and a ready text; Send to chat passes it to the conversation |
 | `yougile_show_hours` | hours for a period: planned vs worked as charts by person and project, overruns, completed without a plan, open with logged hours; the period changes on the screen |
 | `yougile_show_triage` | queue triage: each task's problems (no assignee, deadline or plan, overdue), the assignee, deadline and plan edited right in the row, people's load on the board |
+| `yougile_attach_files` | files for a task: drop files (up to 10, each up to 10 MB), add a comment, and they are uploaded to YouGile and appear in the task's chat as attachments |
 
 Buttons act with the session's permissions, and buttons without them are not shown. A click is
 your confirmation: a write into a project from `confirm_projects` goes ahead without asking

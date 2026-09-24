@@ -5,9 +5,9 @@ exactly as for the domain tools.
 """
 
 import copy
-import re
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
+from pathlib import Path
 from typing import Annotated, Any, Literal
 from zoneinfo import ZoneInfo
 
@@ -17,7 +17,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from . import progress
-from .caller import Caller, tool_errors
+from .caller import TASK_NUMBER, Caller, tool_errors
 from .client import YouGileError
 from .directory import Ambiguous, NotFound, Structure, _norm
 from .policy import PolicyError
@@ -37,7 +37,9 @@ MAX_PAGES = 10  # 10 000 tasks per search is plenty and protects the shared rate
 PER_COLUMN_THRESHOLD = 4  # up to this many columns: one filtered request per column
 COLORS = ("primary", "gray", "red", "pink", "yellow", "green", "turquoise", "blue", "violet")
 CLEAR_WORDS = {"", "none", "null", "-", "нет", "clear", "убрать"}
-TASK_NUMBER = re.compile(r"^[A-Za-zА-Яа-яЁё]+-\d+$")
+# A chat message with this text followed by an uploaded file's URL, and no HTML, shows as
+# that file: this is how YouGile itself stores a file attached in a task's chat.
+FILE_MARK = "/root/#file:"
 
 TaskRef = Annotated[str, Field(description="Task number like ID-123 or DEV-12, or its id")]
 Confirm = Annotated[
@@ -730,6 +732,65 @@ async def yougile_task_chat(
     }
 
 
+async def attach_files(
+    work: Work, task: dict, uploads: list[dict[str, Any]], comment: str | None = None
+) -> list[dict[str, str]]:
+    """Upload files to YouGile and post each one into the task's chat, after the comment.
+
+    ``uploads`` are files.upload parameters: {"file_path": ...} or {"content_base64": ...,
+    "filename": ...}. A chat message whose text is FILE_MARK + the file's URL is what YouGile
+    shows as an attached file.
+    """
+    attached: list[dict[str, str]] = []
+    for n, params in enumerate(uploads, 1):
+        name = str(params.get("filename") or Path(str(params.get("file_path", ""))).name)
+        if len(uploads) > 1:
+            await progress.report(f"Загружаю файл {n} из {len(uploads)}: {name}")
+        result = await work.caller.call("files.upload", dict(params))
+        attached.append({"name": name, "url": result.get("url"), "link": result.get("fullUrl")})
+    if comment and comment.strip():
+        await work.caller.call(
+            "chats.send_message",
+            {"chatId": task["id"], "text": comment, "textHtml": text_to_html(comment), "label": ""},
+        )
+    for file in attached:
+        mark = FILE_MARK + file["url"]
+        await work.caller.call(
+            "chats.send_message",
+            {"chatId": task["id"], "text": mark, "textHtml": "", "label": ""},
+        )
+    return attached
+
+
+@tool_errors
+async def yougile_attach_file(
+    task: TaskRef,
+    file_path: Annotated[
+        str | None, Field(description="A file on this computer (local server only)")
+    ] = None,
+    content_base64: Annotated[str | None, Field(description="File content in base64")] = None,
+    filename: Annotated[str | None, Field(description="File name, with content_base64")] = None,
+    comment: Annotated[str | None, Field(description="A message posted before the file")] = None,
+    confirm: Confirm = False,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Attach a file to a task: upload it to YouGile and post it into the task's chat, where
+    it shows as an attachment, optionally after a comment. Pass file_path, or content_base64
+    with filename."""
+    work = Work(ctx, confirm)
+    t = await work.task(task)
+    params: dict[str, Any] = (
+        {"file_path": file_path}
+        if file_path
+        else {"content_base64": content_base64, "filename": filename}
+    )
+    attached = await attach_files(work, t, [params], comment)
+    return {
+        "task": work.number(t),
+        "attached": [{"name": a["name"], "url": a["link"]} for a in attached],
+    }
+
+
 READ_ONLY = (yougile_overview, yougile_find_tasks, yougile_task)
 WRITES = (
     yougile_create_task,
@@ -737,6 +798,7 @@ WRITES = (
     yougile_move_task,
     yougile_log_time,
     yougile_task_chat,
+    yougile_attach_file,
 )
 
 

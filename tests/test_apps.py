@@ -254,3 +254,67 @@ async def test_triage_save_changes_nothing_when_nothing_changed(server_for, fake
             },
         )
     assert fake.calls("PUT", "/api-v2/tasks/t-int") == 0
+
+
+async def test_attach_file_tool_posts_the_file_into_the_chat(server_for, fake):
+    async with Client(server_for()) as client:
+        result = await client.call_tool(
+            "yougile_attach_file",
+            {
+                "task": "ID-1",
+                "content_base64": "aGVsbG8=",
+                "filename": "отчёт.txt",
+                "comment": "См.",
+            },
+        )
+    assert fake.uploads == ["отчёт.txt"]
+    texts = [m["text"] for m in fake.messages["t-int"][-2:]]
+    assert texts == ["См.", "/root/#file:/user-data/company/отчёт.txt"]
+    assert result.data["attached"] == [
+        {"name": "отчёт.txt", "url": "https://yougile.test/user-data/company/отчёт.txt"}
+    ]
+
+
+async def test_attach_needs_upload_and_chat_rights(server_for):
+    async with drawing(server_for(role="member", deny=["files.upload"])) as client:
+        names = {t.name for t in await client.list_tools()}
+    assert not {"yougile_attach_file", "yougile_attach_files", "yougile_app_attach"} & names
+
+
+async def test_attach_screen_uploads_dropped_files(server_for, fake):
+    dropped = [
+        {"name": "a.png", "size": 5, "type": "image/png", "data": "aGVsbG8="},
+        {"name": "b.pdf", "size": 5, "type": "application/pdf", "data": "aGVsbG8="},
+    ]
+    async with drawing(server_for(confirm_projects=["Клиенты"])) as client:
+        screen = await client.call_tool("yougile_attach_files", {"task": "ID-2"})
+        result = await client.call_tool(
+            "yougile_app_attach", {"task": "t-cli", "files": dropped, "comment": ""}
+        )
+    assert screen.structured_content["state"]["task"]["number"] == "ID-2"
+    assert fake.uploads == ["a.png", "b.pdf"]  # a click needs no further confirmation
+    assert [m["text"] for m in fake.messages["t-cli"]] == [
+        "/root/#file:/user-data/company/a.png",
+        "/root/#file:/user-data/company/b.pdf",
+    ]
+    assert [a["name"] for a in result.structured_content["attached"]] == ["a.png", "b.pdf"]
+    assert all(m["textHtml"] == "" for m in fake.messages["t-cli"])  # as YouGile stores files
+
+
+async def test_attach_screen_refuses_big_and_broken_files(server_for, fake, monkeypatch):
+    from yougile_mcp.apps import files
+
+    monkeypatch.setattr(files, "MAX_FILE_MB", 0)
+    async with drawing(server_for()) as client:
+        with pytest.raises(ToolError, match="larger than 0 MB"):
+            await client.call_tool(
+                "yougile_app_attach",
+                {"task": "t-int", "files": [{"name": "big.bin", "data": "aGVsbG8="}]},
+            )
+        monkeypatch.setattr(files, "MAX_FILE_MB", 10)
+        with pytest.raises(ToolError, match="damaged"):
+            await client.call_tool(
+                "yougile_app_attach",
+                {"task": "t-int", "files": [{"name": "bad.bin", "data": "не base64"}]},
+            )
+    assert fake.uploads == []

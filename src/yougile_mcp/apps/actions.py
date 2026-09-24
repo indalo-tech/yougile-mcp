@@ -21,6 +21,7 @@ from ..caller import tool_errors
 from ..present import format_ms
 from ..smart import TaskRef, Work, search_tasks
 from . import data, hours, standup, triage
+from .files import yougile_app_attach
 
 
 def _clicked() -> Work:
@@ -259,6 +260,7 @@ WRITES = (
     yougile_app_send,
     yougile_app_create,
     yougile_app_triage_save,
+    yougile_app_attach,
 )
 
 

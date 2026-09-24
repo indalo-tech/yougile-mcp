@@ -20,7 +20,7 @@ def server_for(make_runtime):
 async def test_tools_are_listed_with_operation_enums(server_for):
     async with Client(server_for()) as client:
         tools = {t.name: t for t in await client.list_tools()}
-    assert len(tools) == 20
+    assert len(tools) == 21
     enum = tools["yougile_tasks"].input_schema["properties"]["operation"]["enum"]
     assert {"list", "get", "create", "update"} <= set(enum)
 
@@ -142,3 +142,12 @@ async def test_help(server_for):
 def test_instructions_include_company_rules(make_runtime):
     text = instructions(make_runtime(role="member", instructions="Пишите кратко."))
     assert "role=member" in text and "Пишите кратко." in text
+
+
+async def test_chat_tools_take_a_task_number(server_for, fake):
+    async with Client(server_for()) as client:
+        result = await client.call_tool(
+            "yougile_chats", {"operation": "list_messages", "params": {"chatId": "ID-1"}}
+        )
+    assert result.data["content"][-1]["text"] == "Готово к проверке"
+    assert fake.requests[-1].url.path == "/api-v2/chats/t-int/messages"

@@ -29,6 +29,7 @@ SCREENS = {
     "yougile_show_standup": ("tasks.list",),
     "yougile_show_hours": ("tasks.list",),
     "yougile_show_triage": ("tasks.list",),
+    "yougile_attach_files": ("files.upload", "chats.send_message"),
 }
 # Tools behind the screens' buttons, with the operations they go through.
 ACTIONS = {
@@ -41,6 +42,7 @@ ACTIONS = {
     "yougile_app_hours": ("tasks.list",),
     "yougile_app_triage": ("tasks.list",),
     "yougile_app_triage_save": ("tasks.update",),
+    "yougile_app_attach": ("files.upload", "chats.send_message"),
     "yougile_app_complete": ("tasks.update",),
     "yougile_app_take": ("tasks.update",),
     "yougile_app_move": ("tasks.update",),
@@ -77,7 +79,7 @@ def client_draws(ctx: Any) -> bool:
 def register(mcp: FastMCP) -> None:
     if not available():
         return
-    from . import actions, board, form, hours, screens, standup, triage
+    from . import actions, board, files, form, hours, screens, standup, triage
 
-    for module in (screens, board, form, standup, hours, triage, actions):
+    for module in (screens, board, form, standup, hours, triage, files, actions):
         module.register(mcp)

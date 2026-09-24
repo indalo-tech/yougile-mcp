@@ -25,6 +25,7 @@ WRITING_TOOLS = {
     "yougile_update_task": ("tasks.update",),
     "yougile_move_task": ("tasks.update",),
     "yougile_log_time": ("tasks.update",),
+    "yougile_attach_file": ("files.upload", "chats.send_message"),
 }
 # Tools that also write: without the operation, these parameters go away.
 WRITING_PARAMS = {
