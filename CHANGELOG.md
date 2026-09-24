@@ -5,6 +5,26 @@
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-09-24
+
+### Русский
+
+#### Добавлено
+- Лимит размера ответа: результат инструмента длиннее ~60 000 символов JSON (около 20 тыс.
+  токенов) урезается без поломки структуры. Сначала от самых длинных списков отбрасываются
+  хвостовые элементы, затем укорачиваются самые длинные тексты (с пометкой `…[cut]`); в ответе
+  появляется `truncated` — сколько показано из скольких и совет сузить запрос. Лимит задаётся
+  `Runtime.max_response_chars`.
+
+### English
+
+#### Added
+- A response size limit: a tool result longer than ~60,000 characters of JSON (about 20k
+  tokens) is trimmed without breaking its structure. The longest lists lose their tail items
+  first, then the longest texts are shortened (marked `…[cut]`); the result gets `truncated`
+  with how many items are shown out of how many and a hint to narrow the request. The limit is
+  `Runtime.max_response_chars`.
+
 ## [0.8.0] — 2026-09-24
 
 ### Русский
@@ -302,7 +322,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.5.1...v0.6.0

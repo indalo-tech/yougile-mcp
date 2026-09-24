@@ -17,6 +17,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ElicitRequest, ElicitRequestFormParams, InputRequiredResult
 
 from . import runtime
+from .budget import DEFAULT_MAX_CHARS, fit
 from .catalog import find
 from .client import YouGileError
 from .directory import Ambiguous, NotFound, bind_choices, choice_key, reset_choices
@@ -242,7 +243,12 @@ def tool_errors(fn: Callable[P, Awaitable[Any]]) -> Callable[P, Awaitable[Any]]:
         try:
             while True:
                 try:
-                    return await fn(*args, **kwargs)
+                    result = await fn(*args, **kwargs)
+                    try:
+                        limit = runtime.current().max_response_chars
+                    except RuntimeError:
+                        limit = DEFAULT_MAX_CHARS
+                    return fit(result, limit)
                 except Ambiguous as exc:
                     key = choice_key(exc.kind, exc.ref)
                     if (

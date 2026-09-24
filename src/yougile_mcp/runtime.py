@@ -12,6 +12,7 @@ from collections.abc import Awaitable, Callable
 from contextvars import ContextVar, Token
 from dataclasses import dataclass
 
+from .budget import DEFAULT_MAX_CHARS
 from .client import YouGileClient
 from .config import Settings, WorkspaceConfig
 from .directory import Directory
@@ -34,6 +35,8 @@ class Runtime:
     # it through save_board; without save_board it lasts until the server restarts.
     board: str | None = None
     save_board: Callable[[str | None], Awaitable[None]] | None = None
+    # Tool results longer than this (characters of JSON) are trimmed; see budget.py.
+    max_response_chars: int = DEFAULT_MAX_CHARS
 
 
 _current: ContextVar[Runtime | None] = ContextVar("yougile_runtime", default=None)

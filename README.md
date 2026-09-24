@@ -27,6 +27,8 @@ MCP-сервер, через который Claude и другие AI-ассис
 - **Общий лимит запросов.** YouGile пропускает 50 запросов в минуту на всю компанию, включая
   тех, кто работает в интерфейсе. Сервер держит лимит сам: один счётчик на все сессии,
   запущенные на компьютере. При ответе 429 все сессии ждут вместе.
+- **Ответы по размеру.** Слишком большой ответ (тысяча задач, длинная переписка) урезается
+  аккуратно: хвост списков и длинные тексты, с пометкой, что показано и как сузить запрос.
 - **Права поверх прав YouGile.** Можно ограничить сессию чтением, выбранными проектами, запретить
   отдельные операции, требовать подтверждения человека перед записью в проекты, которые видят
   клиенты.
@@ -291,6 +293,8 @@ tasks, boards, columns, chats, employees and stickers, on top of the official RE
 - **A shared rate limit.** YouGile allows 50 requests per minute per company, people in the
   web UI included. The server enforces the limit itself with one counter shared by every
   session running on the machine, and all of them back off together on HTTP 429.
+- **Results that fit.** An oversized result (a thousand tasks, a long chat) is trimmed neatly:
+  list tails and long texts go, with a note on what is shown and how to narrow the request.
 - **Permissions on top of YouGile's.** Restrict a session to reading, to selected projects,
   deny specific operations, or require a human to confirm writes into projects your
   clients can see.
