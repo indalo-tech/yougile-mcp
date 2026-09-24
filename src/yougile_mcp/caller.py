@@ -14,6 +14,7 @@ from typing import Any, ParamSpec
 
 from fastmcp import Context
 from fastmcp.exceptions import ToolError
+from fastmcp.tools import ToolResult
 from mcp.types import ElicitRequest, ElicitRequestFormParams, InputRequiredResult
 
 from . import progress, runtime
@@ -245,6 +246,8 @@ def tool_errors(fn: Callable[P, Awaitable[Any]]) -> Callable[P, Awaitable[Any]]:
             while True:
                 try:
                     result = await fn(*args, **kwargs)
+                    if isinstance(result, ToolResult):  # a screen: it fits its own text part
+                        return result
                     try:
                         limit = runtime.current().max_response_chars
                     except RuntimeError:

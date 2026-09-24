@@ -6,6 +6,7 @@ exactly as for the domain tools.
 
 import copy
 import re
+from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 from typing import Annotated, Any, Literal
 from zoneinfo import ZoneInfo
@@ -288,17 +289,70 @@ async def yougile_find_tasks(
     marked completed show done_by_column: true (YouGile keeps no date for those); open tasks
     past their deadline show overdue: true. completed_since/completed_until select tasks
     completed in a period, newest first."""
-    work = Work(ctx)
+    found = await search_tasks(
+        Work(ctx),
+        text=text,
+        project=project,
+        board=board,
+        column=column,
+        assignee=assignee,
+        status=status,
+        include_archived=include_archived,
+        completed_since=completed_since,
+        completed_until=completed_until,
+    )
+    return found.result(limit)
+
+
+@dataclass
+class Found:
+    """Tasks a search selected, with what it takes to show them."""
+
+    scope: str
+    tasks: list[dict]
+    structure: Structure
+    users: dict[str, dict]
+    done_ids: frozenset[str]
+    tz: ZoneInfo
+    truncated: bool = False
+
+    def summaries(self, limit: int) -> list[dict[str, Any]]:
+        now = datetime.now(self.tz)
+        return [
+            task_summary(t, self.structure, self.users, self.tz, now, self.done_ids)
+            for t in self.tasks[:limit]
+        ]
+
+    def result(self, limit: int) -> dict[str, Any]:
+        return {
+            "scope": self.scope,
+            "count": len(self.tasks),
+            "tasks": self.summaries(limit),
+            **({"shown": limit} if len(self.tasks) > limit else {}),
+            **({"truncated": True} if self.truncated else {}),
+        }
+
+
+async def search_tasks(
+    work: Work,
+    *,
+    text: str | None = None,
+    project: str | None = None,
+    board: str | None = None,
+    column: str | None = None,
+    assignee: str | None = None,
+    status: str | None = None,
+    include_archived: bool = False,
+    completed_since: str | None = None,
+    completed_until: str | None = None,
+) -> Found:
+    """The search behind yougile_find_tasks (see its description for the rules)."""
     done_from, done_before = _period(completed_since, completed_until, work.tz)
     if text and TASK_NUMBER.match(text.strip()):
         task = await work.task(text)
         s = await work.structure()
         users = await work.directory.users_by_id()
-        return {
-            "scope": "task number",
-            "count": 1,
-            "tasks": [task_summary(task, s, users, work.tz, done_columns=work.done_columns(s))],
-        }
+        return Found("task number", [task], s, users, work.done_columns(s), work.tz)
 
     s = await work.structure()
     done_ids = work.done_columns(s)
@@ -350,14 +404,7 @@ async def yougile_find_tasks(
     if by_period:
         selected.sort(key=lambda t: t.get("completedTimestamp") or 0, reverse=True)
     users = await work.directory.users_by_id() if any(t.get("assigned") for t in selected) else {}
-    now = datetime.now(work.tz)
-    return {
-        "scope": scope,
-        "count": len(selected),
-        "tasks": [task_summary(t, s, users, work.tz, now, done_ids) for t in selected[:limit]],
-        **({"shown": limit} if len(selected) > limit else {}),
-        **({"truncated": True} if truncated else {}),
-    }
+    return Found(scope, selected, s, users, done_ids, work.tz, truncated)
 
 
 @tool_errors

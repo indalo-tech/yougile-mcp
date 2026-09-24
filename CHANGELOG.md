@@ -5,6 +5,44 @@
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-09-24
+
+### Русский
+
+#### Добавлено
+- Экраны MCP Apps (дополнение `yougile-mcp[apps]`, Prefab UI 0.20.2): `yougile_show_tasks` —
+  таблица задач с поиском, сортировкой и карточкой по клику; `yougile_show_task` — карточка с
+  кнопками «Выполнено» / «Вернуть в работу», «Взять себе», перенос в колонку по цепочке
+  Workflow, отметки чек-листа, списание часов и сообщение в чат. После нажатия экран получает
+  свежие данные без запроса к модели; модель получает те же данные текстом.
+- Кнопки вызывают инструменты `yougile_app_*`, видимые только экрану. Они идут через те же
+  проверки прав; кнопок без прав нет. Нажатие — подтверждение записи, в том числе в проекты из
+  `confirm_projects` (на карточке такого проекта есть пометка).
+- Экраны и их кнопки показываются только клиентам, которые объявили поддержку MCP Apps
+  (`io.modelcontextprotocol/ui`), и только при установленном дополнении.
+
+#### Изменено
+- Поиск задач вынесен из `yougile_find_tasks` в `smart.search_tasks`, результат — `Found`;
+  таблица и инструмент ищут одинаково.
+
+### English
+
+#### Added
+- MCP Apps screens (the `yougile-mcp[apps]` extra, Prefab UI 0.20.2): `yougile_show_tasks` —
+  a task table with search, sorting and a card on click; `yougile_show_task` — a card with
+  buttons to complete or reopen, take the task, move it to a column along the Workflow chain,
+  tick checklist items, log hours and post to the chat. After a click the screen gets fresh
+  data without asking the model; the model gets the same data as text.
+- Buttons call `yougile_app_*` tools that only the screen sees. They go through the same
+  permission checks, and buttons without permission are not shown. A click confirms the write,
+  including writes into `confirm_projects` (the card of such a project says so).
+- Screens and their buttons are shown only to clients that announce MCP Apps support
+  (`io.modelcontextprotocol/ui`), and only with the extra installed.
+
+#### Changed
+- The task search moved out of `yougile_find_tasks` into `smart.search_tasks`, returning
+  `Found`; the table and the tool search the same way.
+
 ## [0.11.0] — 2026-09-24
 
 ### Русский
@@ -382,7 +420,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.9.0...v0.9.1

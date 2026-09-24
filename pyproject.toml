@@ -19,6 +19,11 @@ dependencies = [
     "tzdata>=2025.2; sys_platform == 'win32'",  # Windows has no system time zone database
 ]
 
+[project.optional-dependencies]
+# Interactive screens (MCP Apps) for clients that draw them. Prefab UI is young and its renderer
+# talks a versioned protocol, so it is pinned exactly.
+apps = ["fastmcp[apps]>=4.0.5,<5", "prefab-ui==0.20.2"]
+
 [project.scripts]
 yougile-mcp = "yougile_mcp.__main__:main"
 
@@ -32,6 +37,7 @@ dev = [
     "pytest>=9.1",
     "pytest-asyncio>=1.4",
     "ruff>=0.16",
+    "yougile-mcp[apps]",
 ]
 
 [build-system]

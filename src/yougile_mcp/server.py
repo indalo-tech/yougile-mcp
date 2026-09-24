@@ -12,7 +12,7 @@ from fastmcp.tools import Tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from . import __version__, prompts, runtime, smart
+from . import __version__, apps, prompts, runtime, smart
 from .caller import Caller, tool_errors
 from .catalog import TOOLS, Operation, by_tool, find
 from .completions import ResolveRuntime, completion_handler
@@ -165,7 +165,8 @@ def build_server(
     other FastMCP options (e.g. ``lifespan``). Tool listings are filtered by the bound
     runtime's permissions, so that middleware must bind a runtime for listings too.
     Argument completion skips middleware: a hosted server passes ``resolve_runtime`` to find
-    the caller's runtime there."""
+    the caller's runtime there. With the ``apps`` extra installed, clients that draw screens
+    (MCP Apps) also get the yougile_show_* screens."""
     mcp = FastMCP(
         name="yougile",
         instructions=instructions(rt),
@@ -175,6 +176,7 @@ def build_server(
         **fastmcp_options,
     )
     smart.register(mcp)
+    apps.register(mcp)
     prompts.register(mcp)
     mcp.add_completion_handler(completion_handler(resolve_runtime))
     for tool in TOOLS:

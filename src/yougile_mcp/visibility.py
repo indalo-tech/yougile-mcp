@@ -2,7 +2,8 @@
 
 The policy still checks every call; this only keeps the model from reaching for what would be
 refused: a read-only session does not see the task-writing tools, and a domain tool lists only
-the operations the role and the denied operations leave.
+the operations the role and the denied operations leave. Screens (MCP Apps) and the tools behind
+their buttons are shown only to clients that draw screens.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from typing import Any
 from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 from fastmcp.tools import Tool
 
-from . import runtime
+from . import apps, runtime
 from .catalog import TOOLS, by_tool, find
 from .policy import Policy, PolicyError
 
@@ -78,11 +79,18 @@ def _domain_tool(tool: Tool, domain: str, policy: Policy) -> Tool | None:
     )
 
 
+def without_screens(tools: Sequence[Tool]) -> list[Tool]:
+    return [t for t in tools if t.name not in apps.SCREENS and t.name not in apps.ACTIONS]
+
+
 def visible_tools(tools: Sequence[Tool], policy: Policy) -> list[Tool]:
     shown: list[Tool] = []
     for tool in tools:
         name = tool.name
-        if name in WRITING_TOOLS:
+        if name in apps.ACTIONS:
+            if all(allowed(policy, op) for op in apps.ACTIONS[name]):
+                shown.append(tool)
+        elif name in WRITING_TOOLS:
             if all(allowed(policy, op) for op in WRITING_TOOLS[name]):
                 shown.append(tool)
         elif name in WRITING_PARAMS:
@@ -100,12 +108,15 @@ def visible_tools(tools: Sequence[Tool], policy: Policy) -> list[Tool]:
 
 
 class ToolVisibility(Middleware):
-    """Filters tool listings by the permissions of the runtime bound for the request."""
+    """Filters tool listings by the permissions of the runtime bound for the request, and by
+    whether the client draws screens."""
 
     async def on_list_tools(
         self, context: MiddlewareContext[Any], call_next: CallNext[Any, Sequence[Tool]]
     ) -> Sequence[Tool]:
         tools = await call_next(context)
+        if not apps.client_draws(context.fastmcp_context):
+            tools = without_screens(tools)
         try:
             rt = runtime.current()
         except RuntimeError:

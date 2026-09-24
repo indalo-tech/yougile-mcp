@@ -130,6 +130,29 @@ YouGile хранит часы только суммой по задаче, бе�
 Параметры дополняются, если клиент это умеет: сотрудники, проекты, доски («Проект / Доска»),
 колонки выбранной доски и удобные даты периода. Проекты вне разрешённых правами не предлагаются.
 
+### Экраны (MCP Apps)
+
+Клиенты, которые умеют рисовать интерфейс внутри чата (MCP Apps), получают экраны: модель
+открывает их, когда вы хотите посмотреть задачи или поработать с задачей, а кнопки на экране
+работают без запроса к модели.
+
+| экран | что на нём |
+|---|---|
+| `yougile_show_tasks` | таблица задач с поиском и сортировкой (фильтры как у `yougile_find_tasks`); строка открывает карточку, кнопка «Обновить» |
+| `yougile_show_task` | карточка задачи: статус, исполнители, срок, часы, чек-лист, описание, чат; кнопки «Выполнено», «Взять себе», перенос в колонку (по цепочке Workflow), отметки чек-листа, списание часов, сообщение в чат |
+
+Кнопки действуют с правами сессии, кнопок без прав нет. Нажатие — это ваше подтверждение: запись
+в проект из `confirm_projects` проходит без повторного вопроса, а на карточке такого проекта
+написано, что его видят клиенты. Модель получает те же данные текстом.
+
+Экраны ставятся дополнением `apps` (Prefab UI):
+
+```bash
+claude mcp add yougile --scope user -e YOUGILE_API_KEY=ваш_ключ -- uvx "yougile-mcp[apps]"
+```
+
+Клиентам без MCP Apps (например, Claude Code) экраны и их кнопки не показываются.
+
 ### Доменные инструменты — весь API
 
 | инструмент | что умеет |
@@ -399,6 +422,30 @@ is built from the tasks completed in that period.
 Parameters are completed when the client supports it: people, projects, boards ("Project /
 Board"), the chosen board's columns and handy period dates. Projects outside the permissions
 are not offered.
+
+### Screens (MCP Apps)
+
+Clients that draw interfaces inside the chat (MCP Apps) get screens: the model opens one when
+you want to look through tasks or work on a task, and the screen's buttons work without asking
+the model.
+
+| screen | what it shows |
+|---|---|
+| `yougile_show_tasks` | a task table with search and sorting (filters as in `yougile_find_tasks`); a row opens the card; a Refresh button |
+| `yougile_show_task` | a task card: status, assignees, deadline, hours, checklist, description, chat; buttons to complete, take, move to a column (along the Workflow chain), tick checklist items, log hours and post to the chat |
+
+Buttons act with the session's permissions, and buttons without them are not shown. A click is
+your confirmation: a write into a project from `confirm_projects` goes ahead without asking
+again, and the card of such a project says clients can see it. The model gets the same data as
+text.
+
+Screens come with the `apps` extra (Prefab UI):
+
+```bash
+claude mcp add yougile --scope user -e YOUGILE_API_KEY=your_key -- uvx "yougile-mcp[apps]"
+```
+
+Clients without MCP Apps (Claude Code, for one) are not shown the screens or their buttons.
 
 ### Domain tools — the whole API
 
