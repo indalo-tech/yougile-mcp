@@ -11,7 +11,9 @@ import copy
 import json
 from typing import Any
 
-DEFAULT_MAX_CHARS = 60_000  # about 20k tokens of mixed Russian text and JSON
+# Raw YouGile JSON (UUIDs, Russian text) runs at about half a token per character, and Claude
+# Code refuses tool results over 25k tokens: 30k characters stays well below that.
+DEFAULT_MAX_CHARS = 30_000
 MIN_TEXT = 300  # a shortened text keeps at least this many characters
 CUT_MARK = " …[cut]"
 HINT = "Narrow the request (filters, a smaller limit, offset) to see the rest."

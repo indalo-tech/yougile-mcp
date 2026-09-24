@@ -5,6 +5,22 @@
 
 ## [Unreleased]
 
+## [0.9.1] — 2026-09-24
+
+### Русский
+
+#### Исправлено
+- Лимит размера ответа снижен до 30 000 символов: сырой JSON YouGile (UUID, русский текст)
+  даёт около половины токена на символ, и 60 000 символов не проходили в Claude Code
+  (лимит 25 тыс. токенов на результат инструмента).
+
+### English
+
+#### Fixed
+- The response size limit is lowered to 30,000 characters: raw YouGile JSON (UUIDs, Russian
+  text) runs at about half a token per character, and 60,000 characters did not pass Claude
+  Code's 25k-token limit on a tool result.
+
 ## [0.9.0] — 2026-09-24
 
 ### Русский
@@ -322,7 +338,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.6.0...v0.7.0
