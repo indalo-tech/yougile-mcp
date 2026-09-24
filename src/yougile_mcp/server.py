@@ -15,6 +15,7 @@ from pydantic import Field
 from . import __version__, prompts, runtime, smart
 from .caller import Caller, tool_errors
 from .catalog import TOOLS, Operation, by_tool, find
+from .completions import ResolveRuntime, completion_handler
 from .dispatch import describe
 from .visibility import ToolVisibility, tool_description
 
@@ -156,12 +157,15 @@ def build_server(
     *,
     auth: AuthProvider | None = None,
     middleware: list[Middleware] | None = None,
+    resolve_runtime: ResolveRuntime | None = None,
     **fastmcp_options: Any,
 ) -> FastMCP:
     """The MCP server. Pass ``rt`` for a single-user server (local stdio); a hosted server
     passes ``auth`` and a ``middleware`` that binds a runtime per request instead, plus any
     other FastMCP options (e.g. ``lifespan``). Tool listings are filtered by the bound
-    runtime's permissions, so that middleware must bind a runtime for listings too."""
+    runtime's permissions, so that middleware must bind a runtime for listings too.
+    Argument completion skips middleware: a hosted server passes ``resolve_runtime`` to find
+    the caller's runtime there."""
     mcp = FastMCP(
         name="yougile",
         instructions=instructions(rt),
@@ -172,6 +176,7 @@ def build_server(
     )
     smart.register(mcp)
     prompts.register(mcp)
+    mcp.add_completion_handler(completion_handler(resolve_runtime))
     for tool in TOOLS:
         mcp.add_tool(_domain_tool(tool))
     mcp.add_tool(

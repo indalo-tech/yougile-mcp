@@ -5,6 +5,30 @@
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-09-24
+
+### Русский
+
+#### Добавлено
+- Автодополнение параметров готовых сценариев (MCP completion): `person` — «me» и сотрудники,
+  `project` — проекты, `board` — «Проект / Доска» (с учётом выбранного проекта), `column` —
+  колонки выбранной доски, `since`/`until` в `hours_report` — понедельник, начало месяца,
+  сегодня и т. п. Сначала совпадения с начала, потом по вхождению; проекты вне разрешённых
+  правами не предлагаются. В MCP дополняются только аргументы промптов, не инструментов.
+- `build_server(resolve_runtime=...)`: запросы дополнения идут мимо middleware, поэтому
+  сервер с несколькими пользователями передаёт функцию, которая находит runtime вызывающего.
+
+### English
+
+#### Added
+- Argument completion for the ready-made scenarios (MCP completion): `person` — "me" and the
+  company's people, `project` — projects, `board` — "Project / Board" (narrowed by a chosen
+  project), `column` — the chosen board's columns, `since`/`until` in `hours_report` — Monday,
+  the first of the month, today and so on. Prefix matches come first; projects outside the
+  permissions are not offered. MCP completes prompt arguments only, not tool arguments.
+- `build_server(resolve_runtime=...)`: completion requests bypass middleware, so a
+  multi-user server passes a function that finds the caller's runtime.
+
 ## [0.10.0] — 2026-09-24
 
 ### Русский
@@ -358,7 +382,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.8.0...v0.9.0

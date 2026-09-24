@@ -127,6 +127,9 @@ YOUGILE_API_KEY=ваш_ключ uvx yougile-mcp check
 YouGile хранит часы только суммой по задаче, без дат списания, поэтому отчёт «за период» строится
 по задачам, выполненным в этот период.
 
+Параметры дополняются, если клиент это умеет: сотрудники, проекты, доски («Проект / Доска»),
+колонки выбранной доски и удобные даты периода. Проекты вне разрешённых правами не предлагаются.
+
 ### Доменные инструменты — весь API
 
 | инструмент | что умеет |
@@ -392,6 +395,10 @@ the regular tools, under the same permissions and limits. The texts are in Russi
 
 YouGile keeps only a task's total hours, not when they were logged, so a report "for a period"
 is built from the tasks completed in that period.
+
+Parameters are completed when the client supports it: people, projects, boards ("Project /
+Board"), the chosen board's columns and handy period dates. Projects outside the permissions
+are not offered.
 
 ### Domain tools — the whole API
 
