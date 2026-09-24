@@ -184,7 +184,8 @@ YouGile хранит часы только суммой по задаче, бе�
 | `instructions` | правила вашей компании для модели, строка или список строк |
 
 Эти права только сужают права YouGile: ключ всегда действует с правами пользователя,
-который его выпустил.
+который его выпустил. Модель видит только то, что права разрешают: читателю не показываются
+инструменты записи, а инструменты разделов API перечисляют лишь разрешённые операции.
 
 **Как работает подтверждение.** Если клиент умеет показывать запросы пользователю
 (MCP elicitation), человек подтверждает запись в окне клиента, и модель не может обойти этот
@@ -447,7 +448,8 @@ shared ones. `YOUGILE_CONFIG` points to a file explicitly.
 | `instructions` | your company's rules for the model, a string or a list of strings |
 
 These permissions only narrow YouGile's own: the key always acts with the rights of the user
-who issued it.
+who issued it. The model sees only what the permissions allow: a reader is not shown the
+writing tools, and the API domain tools list only the allowed operations.
 
 **How confirmation works.** If the client can prompt the user (MCP elicitation), the person
 confirms the write in the client's UI and the model cannot skip that step. One action asks

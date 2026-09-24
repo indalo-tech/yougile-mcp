@@ -25,6 +25,30 @@ async def test_tools_are_listed_with_operation_enums(server_for):
     assert {"list", "get", "create", "update"} <= set(enum)
 
 
+async def test_reader_sees_no_writing_tools(server_for):
+    async with Client(server_for(role="reader")) as client:
+        tools = {t.name: t for t in await client.list_tools()}
+    assert not {"yougile_create_task", "yougile_update_task", "yougile_move_task"} & set(tools)
+    assert "yougile_log_time" not in tools and "yougile_use_board" in tools
+    chat = tools["yougile_task_chat"]
+    assert (
+        "send" not in chat.input_schema["properties"]
+        and "confirm" not in chat.input_schema["properties"]
+    )
+    enum = tools["yougile_tasks"].input_schema["properties"]["operation"]["enum"]
+    assert "get" in enum and "create" not in enum and "update" not in enum
+    assert "- create" not in tools["yougile_tasks"].description
+
+
+async def test_denied_operations_disappear_from_listings(server_for):
+    async with Client(server_for(role="member", deny=["tasks.create"])) as client:
+        tools = {t.name: t for t in await client.list_tools()}
+    assert "yougile_create_task" not in tools and "yougile_update_task" in tools
+    enum = tools["yougile_tasks"].input_schema["properties"]["operation"]["enum"]
+    assert "create" not in enum and "update" in enum
+    assert "send" in tools["yougile_task_chat"].input_schema["properties"]
+
+
 async def test_call_passes_through_to_api(server_for, fake):
     async with Client(server_for()) as client:
         result = await client.call_tool(

@@ -16,6 +16,7 @@ from . import __version__, prompts, runtime, smart
 from .caller import Caller, tool_errors
 from .catalog import TOOLS, Operation, by_tool, find
 from .dispatch import describe
+from .visibility import ToolVisibility, tool_description
 
 BASE_INSTRUCTIONS = """\
 YouGile (task tracker). Two kinds of tools:
@@ -95,15 +96,6 @@ CONFIRM_DOC = (
 )
 
 
-def _tool_description(tool: str) -> str:
-    lines = [TOOLS[tool], "", "Operations ([access]):"]
-    for name, op in by_tool()[tool].items():
-        lines.append(f"- {name} [{op.access}]: {op.summary}")
-    lines.append("")
-    lines.append(f"Call yougile_help('{tool}.<operation>') for parameters.")
-    return "\n".join(lines)
-
-
 def _domain_tool(tool: str) -> Tool:
     async def handler(operation, params=None, confirm=False, ctx=None):  # type: ignore[no-untyped-def]
         return await execute(tool, operation, params, confirm, ctx)
@@ -119,7 +111,7 @@ def _domain_tool(tool: str) -> Tool:
     return Tool.from_function(
         handler,
         name=f"yougile_{tool}",
-        description=_tool_description(tool),
+        description=tool_description(tool),
         output_schema=None,
         annotations=ToolAnnotations(open_world_hint=True),
     )
@@ -168,13 +160,14 @@ def build_server(
 ) -> FastMCP:
     """The MCP server. Pass ``rt`` for a single-user server (local stdio); a hosted server
     passes ``auth`` and a ``middleware`` that binds a runtime per request instead, plus any
-    other FastMCP options (e.g. ``lifespan``)."""
+    other FastMCP options (e.g. ``lifespan``). Tool listings are filtered by the bound
+    runtime's permissions, so that middleware must bind a runtime for listings too."""
     mcp = FastMCP(
         name="yougile",
         instructions=instructions(rt),
         version=__version__,
         auth=auth,
-        middleware=middleware,
+        middleware=[*(middleware or []), ToolVisibility()],
         **fastmcp_options,
     )
     smart.register(mcp)

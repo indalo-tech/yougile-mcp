@@ -5,6 +5,29 @@
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-09-24
+
+### Русский
+
+#### Добавлено
+- Список инструментов следует правам сессии. Читателю не показываются инструменты записи
+  задач (`yougile_create_task`, `yougile_update_task`, `yougile_move_task`, `yougile_log_time`),
+  у `yougile_task_chat` без права писать пропадает отправка сообщения, а инструменты разделов
+  API перечисляют только разрешённые операции (с учётом роли и запретов `deny`). Проверка
+  прав при вызове остаётся прежней.
+- `build_server` сам добавляет фильтр списка (`ToolVisibility`); серверу с `middleware`
+  нужно привязывать runtime и на выдачу списка инструментов.
+
+### English
+
+#### Added
+- The tool list follows the session's permissions. A reader does not see the task-writing tools
+  (`yougile_create_task`, `yougile_update_task`, `yougile_move_task`, `yougile_log_time`),
+  `yougile_task_chat` loses posting when writing is not allowed, and the API domain tools list
+  only the allowed operations (by role and `deny`). Permission checks on calls stay as they were.
+- `build_server` adds the listing filter (`ToolVisibility`) itself; a server with its own
+  `middleware` has to bind a runtime for tool listings too.
+
 ## [0.7.0] — 2026-09-23
 
 ### Русский
@@ -279,7 +302,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.5.0...v0.5.1
