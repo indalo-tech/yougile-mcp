@@ -5,6 +5,37 @@
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-09-24
+
+### Русский
+
+#### Добавлено
+- Экран `yougile_show_board` — доска: колонки рядом, в каждой карточки задач (номер, название,
+  исполнители, срок, просрочка красным), фильтр по исполнителю с поиском, стрелки ← → переносят
+  карточку в соседнюю колонку (по цепочке Workflow, если она настроена), клик открывает полную
+  карточку с её кнопками. В колонке до 30 карточек и счётчик «30 из N»; в колонках «готово» —
+  последние выполненные.
+- Экран `yougile_new_task_form` — форма новой задачи. Модель заполняет то, что знает (доска,
+  колонка, название, описание, исполнитель, срок); вы выбираете доску и колонку, исполнителя с
+  поиском, дату, план часов, чек-лист по строкам и создаёте задачу кнопкой — после этого форма
+  показывает карточку новой задачи. Форма есть только у тех, кому можно создавать задачи.
+- Кнопки экранов: `yougile_app_board`, `yougile_app_columns`, `yougile_app_create`.
+
+### English
+
+#### Added
+- The `yougile_show_board` screen — a board: columns side by side with task cards (number,
+  title, assignees, deadline, overdue in red), a searchable filter by assignee, ← → arrows that
+  move a card to the neighbouring column (along the Workflow chain if configured), and the full
+  card with its buttons on click. A column shows up to 30 cards with a "30 of N" count; done
+  columns show the latest completed.
+- The `yougile_new_task_form` screen — a new-task form. The model fills in what it knows (board,
+  column, title, description, assignee, deadline); you pick the board and column, a searchable
+  assignee, the date, planned hours and a line-per-item checklist and create the task with a
+  button, after which the form shows the new task's card. Only sessions that may create tasks
+  get the form.
+- Tools behind the buttons: `yougile_app_board`, `yougile_app_columns`, `yougile_app_create`.
+
 ## [0.12.1] — 2026-09-24
 
 ### Русский
@@ -441,7 +472,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.10.0...v0.11.0

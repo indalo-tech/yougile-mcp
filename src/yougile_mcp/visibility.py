@@ -87,8 +87,9 @@ def visible_tools(tools: Sequence[Tool], policy: Policy) -> list[Tool]:
     shown: list[Tool] = []
     for tool in tools:
         name = tool.name
-        if name in apps.ACTIONS:
-            if all(allowed(policy, op) for op in apps.ACTIONS[name]):
+        needs = apps.ACTIONS.get(name) or apps.SCREENS.get(name)
+        if needs is not None:
+            if all(allowed(policy, op) for op in needs):
                 shown.append(tool)
         elif name in WRITING_TOOLS:
             if all(allowed(policy, op) for op in WRITING_TOOLS[name]):

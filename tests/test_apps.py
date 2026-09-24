@@ -48,7 +48,8 @@ async def test_buttons_follow_permissions(server_for):
         result = await client.call_tool("yougile_show_task", {"task": "ID-1"})
     assert {"yougile_show_task", "yougile_show_tasks", "yougile_app_task"} <= names
     assert not {"yougile_app_move", "yougile_app_complete", "yougile_app_send"} & names
-    assert result.structured_content["state"]["can"] == {"update": False, "chat": False}
+    can = result.structured_content["state"]["can"]
+    assert can == {"update": False, "chat": False, "create": False}
 
 
 async def test_task_card_screen(server_for):
@@ -123,3 +124,61 @@ async def test_screens_can_ask_for_the_whole_window(server_for):
     for result in (card, table):
         view = json.dumps(result.structured_content["view"])
         assert '"mode": "fullscreen"' in view and '"mode": "inline"' in view
+
+
+async def test_board_screen_columns_cards_and_filter(server_for):
+    async with drawing(server_for()) as client:
+        result = await client.call_tool("yougile_show_board", {"board": "Разработка / Сайт"})
+        annas = await client.call_tool(
+            "yougile_app_board", {"board": "b-hub-int", "assignee": "u-me"}
+        )
+    board = result.structured_content["state"]["board"]
+    assert board["label"] == "Разработка / Сайт"
+    columns = {c["title"]: c for c in board["columns"]}
+    assert list(columns) == ["Очередь", "В работе", "На проверке", "Готово"]
+    card = columns["Очередь"]["tasks"][0]
+    assert card["code"] == "ID-1" and card["prev"] == "" and card["next"] == "c-int-work"
+    assert columns["Готово"]["tasks"][0]["done"] is True and columns["Готово"]["count"] == "1"
+    for_model = json.loads(result.content[0].text)
+    assert for_model["columns"][0]["tasks"][0]["number"] == "ID-1"
+    # nobody assigned Anna: the filtered board has no cards
+    assert all(not c["tasks"] for c in annas.structured_content["columns"])
+
+
+async def test_form_needs_the_right_to_create(server_for):
+    async with drawing(server_for(role="member", deny=["tasks.create"])) as client:
+        names = {t.name for t in await client.list_tools()}
+    assert "yougile_new_task_form" not in names and "yougile_app_create" not in names
+    assert "yougile_show_board" in names
+
+
+async def test_form_prefills_and_creates_the_task(server_for, fake):
+    async with drawing(server_for(workflows=CHAIN)) as client:
+        form = await client.call_tool(
+            "yougile_new_task_form",
+            {"title": "Сделать отчёт", "board": "Разработка / Сайт", "deadline": "30.09.2026"},
+        )
+        columns = await client.call_tool("yougile_app_columns", {"board": "b-hub-cli"})
+        created = await client.call_tool(
+            "yougile_app_create",
+            {
+                "board": "b-hub-int",
+                "column": "c-int-work",
+                "title": "Сделать отчёт",
+                "description": "",
+                "assignee": "u-ivan",
+                "deadline": "2026-09-30",
+                "plan_hours": "2,5",
+                "checklist": "Собрать данные\n\nНаписать",
+            },
+        )
+    state = form.structured_content["state"]
+    assert state["board_id"] == "b-hub-int" and state["column_id"] == "c-int-queue"
+    assert state["title"] == "Сделать отчёт" and state["deadline"] == "2026-09-30"
+    assert json.loads(form.content[0].text)["board"] == "Разработка / Сайт"
+    assert columns.structured_content["column_id"] == "c-cli-queue"
+    task = fake.tasks["t-new"]
+    assert task["columnId"] == "c-int-work" and task["assigned"] == ["u-ivan"]
+    assert task["timeTracking"] == {"plan": 2.5, "work": 0} and "description" not in task
+    assert [i["title"] for i in task["checklists"][0]["items"]] == ["Собрать данные", "Написать"]
+    assert created.structured_content["number"] == "ID-99"

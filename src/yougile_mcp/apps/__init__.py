@@ -20,11 +20,20 @@ if TYPE_CHECKING:
 
 UI_EXTENSION_ID = "io.modelcontextprotocol/ui"  # = fastmcp.apps.config.UI_EXTENSION_ID
 
-SCREENS = ("yougile_show_tasks", "yougile_show_task")
+# Screens, with the operations a screen needs to be of any use.
+SCREENS = {
+    "yougile_show_tasks": ("tasks.list",),
+    "yougile_show_task": ("tasks.get",),
+    "yougile_show_board": ("tasks.list",),
+    "yougile_new_task_form": ("tasks.create",),
+}
 # Tools behind the screens' buttons, with the operations they go through.
 ACTIONS = {
     "yougile_app_tasks": ("tasks.list",),
     "yougile_app_task": ("tasks.get",),
+    "yougile_app_board": ("tasks.list",),
+    "yougile_app_columns": ("tasks.create",),
+    "yougile_app_create": ("tasks.create",),
     "yougile_app_complete": ("tasks.update",),
     "yougile_app_take": ("tasks.update",),
     "yougile_app_move": ("tasks.update",),
@@ -61,7 +70,9 @@ def client_draws(ctx: Any) -> bool:
 def register(mcp: FastMCP) -> None:
     if not available():
         return
-    from . import actions, screens
+    from . import actions, board, form, screens
 
     screens.register(mcp)
+    board.register(mcp)
+    form.register(mcp)
     actions.register(mcp)

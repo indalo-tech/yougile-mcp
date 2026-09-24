@@ -317,11 +317,12 @@ async def yougile_show_tasks(
 SCREEN_TOOLS = (yougile_show_task, yougile_show_tasks)
 
 
-def register(mcp: FastMCP) -> None:
+def add_screens(mcp: FastMCP, *fns: Any) -> None:
+    """Register screen tools: the model calls them, the client draws their result."""
     ui = app_config_to_meta_dict(
         AppConfig(resource_uri=PREFAB_PLACEHOLDER_URI, visibility=["model"])
     )
-    for fn in SCREEN_TOOLS:
+    for fn in fns:
         mcp.add_tool(
             Tool.from_function(
                 fn,
@@ -330,3 +331,7 @@ def register(mcp: FastMCP) -> None:
                 annotations=ToolAnnotations(read_only_hint=True),
             )
         )
+
+
+def register(mcp: FastMCP) -> None:
+    add_screens(mcp, *SCREEN_TOOLS)

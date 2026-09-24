@@ -124,7 +124,61 @@ async def yougile_app_send(
     return await data.card(Work(None), task)
 
 
-READS = (yougile_app_task, yougile_app_tasks)
+@tool_errors
+async def yougile_app_board(
+    board: Annotated[str, Field(description="Board id")],
+    assignee: Annotated[str | None, Field(description='User id, or "all"')] = None,
+) -> dict[str, Any]:
+    """The board's columns and cards, optionally for one assignee."""
+    return await data.board(Work(None), board, assignee)
+
+
+@tool_errors
+async def yougile_app_columns(
+    board: Annotated[str, Field(description="Board id")],
+) -> dict[str, Any]:
+    """A board's columns for the new-task form."""
+    work = Work(None)
+    return data.columns_of(work, await work.structure(), board)
+
+
+def _blank(value: str | None) -> str | None:
+    return value.strip() if value and value.strip() else None
+
+
+@tool_errors
+async def yougile_app_create(
+    board: Annotated[str, Field(description="Board id")],
+    column: Annotated[str, Field(description="Column id")],
+    title: Annotated[str, Field(min_length=1)],
+    description: str | None = None,
+    assignee: Annotated[str | None, Field(description="User id")] = None,
+    deadline: Annotated[str | None, Field(description="YYYY-MM-DD")] = None,
+    plan_hours: Annotated[str | None, Field(description="Planned hours")] = None,
+    checklist: Annotated[str | None, Field(description="Checklist items, one per line")] = None,
+) -> dict[str, Any]:
+    """Create the task from the form; returns its card."""
+    hours = _blank(plan_hours)
+    try:
+        plan = float(hours.replace(",", ".")) if hours else None
+    except ValueError:
+        raise ValueError(f"planned hours {hours!r} are not a number") from None
+    items = [line.strip() for line in (checklist or "").splitlines() if line.strip()]
+    created = await smart.yougile_create_task(
+        title.strip(),
+        column=column,
+        board=board,
+        description=_blank(description),
+        assignees=[assignee] if _blank(assignee) else None,
+        deadline=_blank(deadline),
+        plan_hours=plan,
+        checklist=items or None,
+        confirm=True,
+    )
+    return await data.card(Work(None), created["created"]["number"])
+
+
+READS = (yougile_app_task, yougile_app_tasks, yougile_app_board, yougile_app_columns)
 WRITES = (
     yougile_app_complete,
     yougile_app_take,
@@ -132,6 +186,7 @@ WRITES = (
     yougile_app_check,
     yougile_app_log_time,
     yougile_app_send,
+    yougile_app_create,
 )
 
 

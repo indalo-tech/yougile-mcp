@@ -140,6 +140,8 @@ YouGile хранит часы только суммой по задаче, бе�
 |---|---|
 | `yougile_show_tasks` | таблица задач с поиском и сортировкой (фильтры как у `yougile_find_tasks`); строка открывает карточку, кнопка «Обновить»; «Развернуть» — на всё окно, если клиент это умеет |
 | `yougile_show_task` | карточка задачи: статус, исполнители, срок, часы, чек-лист, описание, чат; кнопки «Выполнено», «Взять себе», перенос в колонку (по цепочке Workflow), отметки чек-листа, списание часов, сообщение в чат |
+| `yougile_show_board` | доска: колонки рядом с карточками задач, фильтр по исполнителю, стрелки ← → для переноса в соседнюю колонку, карточка по клику |
+| `yougile_new_task_form` | форма новой задачи: доска, колонка, название, описание, исполнитель, срок, план часов, чек-лист; модель заполняет, что знает, вы проверяете и создаёте кнопкой |
 
 Кнопки действуют с правами сессии, кнопок без прав нет. Нажатие — это ваше подтверждение: запись
 в проект из `confirm_projects` проходит без повторного вопроса, а на карточке такого проекта
@@ -433,6 +435,8 @@ the model.
 |---|---|
 | `yougile_show_tasks` | a task table with search and sorting (filters as in `yougile_find_tasks`); a row opens the card; a Refresh button; Expand for the whole window, if the client can |
 | `yougile_show_task` | a task card: status, assignees, deadline, hours, checklist, description, chat; buttons to complete, take, move to a column (along the Workflow chain), tick checklist items, log hours and post to the chat |
+| `yougile_show_board` | a board: columns side by side with task cards, a filter by assignee, ← → arrows to move a card to the neighbouring column, the card on click |
+| `yougile_new_task_form` | a new-task form: board, column, title, description, assignee, deadline, planned hours, checklist; the model fills in what it knows, you check and create it with a button |
 
 Buttons act with the session's permissions, and buttons without them are not shown. A click is
 your confirmation: a write into a project from `confirm_projects` goes ahead without asking
