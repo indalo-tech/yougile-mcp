@@ -183,6 +183,26 @@ claude mcp add yougile --scope user -e YOUGILE_API_KEY=ваш_ключ -- uvx "y
 { "operation": "update", "params": { "id": "ID-123", "completed": true } }
 ```
 
+### Клиентские копии задач
+
+Если команда ведёт работу во внутреннем проекте, а заказчику показывает отдельный проект,
+включите `client_copy`. Задача внутреннего проекта по заказу клиента получает копию в проекте
+для клиента: на доске и в колонке с тем же названием, с планом, фактом часов и сроком, но с
+заголовком и описанием для клиента — без внутренних кодов, технических деталей и личных данных.
+
+- `yougile_client_copy` создаёт или обновляет копию: текст пишет модель по правилам компании
+  (встроенным или своим, поле `rules`). Если на клиентской стороне нет доски с таким названием,
+  модель спросит, создать ли её с теми же колонками.
+- Во внутренней карточке появляется строка «Карточка для клиента: ID-…». Клиентская карточка о
+  внутренней ничего не знает.
+- Дальше копия следует за задачей сама: перенос в колонку с тем же названием, часы и срок —
+  когда их меняют через этот сервер (инструменты и кнопки экранов). Если на клиентской доске
+  нет такой колонки, копия остаётся на месте.
+- `yougile_create_task` с `client_title` и `client_description` создаёт обе карточки сразу.
+- Сценарий `client_sync` проходит доску: какие задачи без копии относятся к заказу клиента,
+  какие внутренние, а для каких копия уже сделана вручную (такие не трогает), — и создаёт копии
+  после вашего согласия. `yougile_client_copies` показывает эту сверку данными.
+
 ### Настройки репозитория и пользователя
 
 Сервер ищет `.yougile.json` вверх от текущей папки (обычно это корень репозитория) и общий
@@ -202,7 +222,8 @@ claude mcp add yougile --scope user -e YOUGILE_API_KEY=ваш_ключ -- uvx "y
   },
   "done_columns": ["Готово"],
   "timezone": "Europe/Moscow",
-  "instructions": "В задачах клиентских проектов пишите клиентским языком."
+  "instructions": "В задачах клиентских проектов пишите клиентским языком.",
+  "client_copy": {"from": "Внутреннее", "to": "Работы"}
 }
 ```
 
@@ -217,6 +238,7 @@ claude mcp add yougile --scope user -e YOUGILE_API_KEY=ваш_ключ -- uvx "y
 | `done_columns` | колонки, которые означают «сделано», даже если задача не отмечена выполненной: название для всех досок (`"Готово"`) или `"Проект / Доска / Колонка"`. Такие задачи не считаются открытыми и просроченными; перенося задачу туда, сервер отмечает её выполненной, чтобы YouGile запомнил дату, а перенося обратно — снимает отметку |
 | `timezone` | часовой пояс компании для дат, по умолчанию `Europe/Moscow` |
 | `instructions` | правила вашей компании для модели, строка или список строк |
+| `client_copy` | клиентские копии задач: `from` — внутренний проект, `to` — проект для клиента, `rules` — свои правила клиентского текста (по умолчанию встроенные). См. «Клиентские копии задач» |
 
 Эти права только сужают права YouGile: ключ всегда действует с правами пользователя,
 который его выпустил. Модель видит только то, что права разрешают: читателю не показываются
@@ -484,6 +506,27 @@ Every domain tool takes an `operation` (the allowed values are in its schema) an
 { "operation": "update", "params": { "id": "ID-123", "completed": true } }
 ```
 
+### Client copies of tasks
+
+When a team works in an internal project and shows the customer a separate one, turn on
+`client_copy`. A task of the internal project about client work gets a copy in the client
+project: on the board and in the column of the same name, with the planned and worked hours and
+the deadline, but with a title and description for the client — no internal codes, technical
+details or personal data.
+
+- `yougile_client_copy` creates or updates the copy: the model writes the text by the company's
+  rules (built in, or your own in `rules`). If the client side has no board of that name, the
+  model asks whether to create it with the same columns.
+- The internal card gets the line «Карточка для клиента: ID-…». The client card knows nothing
+  of the internal one.
+- From then on the copy follows the task: moves to the column of the same name, hours and the
+  deadline — whenever they change through this server (tools and screen buttons). If the client
+  board has no such column, the copy stays where it is.
+- `yougile_create_task` with `client_title` and `client_description` creates both cards at once.
+- The `client_sync` scenario walks a board: which tasks without a copy are client work, which
+  are internal, which already have a copy made by hand (left alone) — and creates copies after
+  your consent. `yougile_client_copies` gives that comparison as data.
+
 ### Repository and user config
 
 The server looks for `.yougile.json` in the current directory and its parents (usually the
@@ -518,6 +561,7 @@ shared ones. `YOUGILE_CONFIG` points to a file explicitly.
 | `done_columns` | columns that mean "done" even when a task is not marked completed: a title for every board (`"Done"`) or `"Project / Board / Column"`. Such tasks are neither open nor overdue; moving a task there marks it completed so YouGile records the date, moving it back out reopens it |
 | `timezone` | the company time zone for dates, default `Europe/Moscow` |
 | `instructions` | your company's rules for the model, a string or a list of strings |
+| `client_copy` | client copies of tasks: `from` — the internal project, `to` — the client project, `rules` — your own rules for client texts (built-in by default). See "Client copies of tasks" |
 
 These permissions only narrow YouGile's own: the key always acts with the rights of the user
 who issued it. The model sees only what the permissions allow: a reader is not shown the

@@ -169,6 +169,19 @@ class Work:
         ]
 
 
+def _client_copy_info(work: Work) -> dict[str, Any] | None:
+    from . import copies
+
+    return copies.describe(work.cfg.client_copy)
+
+
+async def _follow(work: Work, task: dict, what: tuple[str, ...]) -> dict[str, Any]:
+    """Keep a linked client copy in step with the task (see copies.py)."""
+    from . import copies
+
+    return await copies.follow(work, task, what)
+
+
 def _color(value: str) -> str:
     name = value.strip().lower().removeprefix("task-")
     if name not in COLORS:
@@ -256,6 +269,7 @@ async def yougile_overview(
         "settings_in": work.rt.settings_hint,
         "timezone": work.cfg.timezone,
         **({"done_columns": work.cfg.done_columns} if work.cfg.done_columns else {}),
+        **({"client_copy": _client_copy_info(work)} if work.cfg.client_copy else {}),
         **({"company_rules": work.cfg.instructions.strip()} if work.cfg.instructions else {}),
     }
 
@@ -493,11 +507,22 @@ async def yougile_create_task(
     checklist: Annotated[list[str] | None, Field(description="Checklist items")] = None,
     checklist_title: str = "Чек-лист",
     color: Annotated[str | None, Field(description=f"One of: {', '.join(COLORS)}")] = None,
+    client_title: Annotated[
+        str | None,
+        Field(description="Also create the client copy with this title (client_copy setting)"),
+    ] = None,
+    client_description: Annotated[
+        str | None, Field(description="The client copy's description, for the client")
+    ] = None,
     confirm: Confirm = False,
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """Create a task using names: board and column, assignees by name or email,
-    deadline as a date, planned hours and a checklist."""
+    deadline as a date, planned hours and a checklist. For client work in a company with
+    client copies, pass client_title and client_description to create the client copy too
+    (see yougile_client_copy)."""
+    if bool(client_title) != bool(client_description):
+        raise ValueError("pass client_title and client_description together")
     work = Work(ctx, confirm)
     s = await work.structure()
     b = await work.board(board, project)
@@ -531,7 +556,12 @@ async def yougile_create_task(
     created = await work.caller.call("tasks.create", body)
     t = await work.task(created["id"])
     users = await work.directory.users_by_id() if t.get("assigned") else {}
-    return {"created": task_summary(t, s, users, work.tz, done_columns=work.done_columns(s))}
+    result = {"created": task_summary(t, s, users, work.tz, done_columns=work.done_columns(s))}
+    if client_title and client_description:
+        from . import copies
+
+        result["client_copy"] = await copies.copy(work, t["id"], client_title, client_description)
+    return result
 
 
 @tool_errors
@@ -565,6 +595,10 @@ async def yougile_update_task(
         body["title"] = title
     if description is not None:
         body["description"] = text_to_html(description)
+        from . import copies
+
+        if number := copies.linked(t):  # a new description keeps the client copy's link
+            body["description"] = copies.with_link(body["description"], number)
     if assignees is not None or add_assignees or remove_assignees:
         current = (
             list(t.get("assigned") or []) if assignees is None else await work.user_ids(assignees)
@@ -606,7 +640,14 @@ async def yougile_update_task(
     if not body:
         raise ValueError("nothing to change: pass at least one field")
     await work.caller.call("tasks.update", {"id": t["id"], **body})
-    return {"task": work.number(t), "changed": sorted(body)}
+    follows = tuple(
+        name for name, key in (("hours", "timeTracking"), ("deadline", "deadline")) if key in body
+    )
+    return {
+        "task": work.number(t),
+        "changed": sorted(body),
+        **(await _follow(work, t, follows) if follows else {}),
+    }
 
 
 @tool_errors
@@ -681,6 +722,7 @@ async def yougile_move_task(
         "to": s.column_label(target),
         "path": [s.columns[c].get("title") for c in done],
         **finish,
+        **(await _follow(work, t, ("column",))),
     }
 
 
@@ -704,7 +746,12 @@ async def yougile_log_time(
         raise ValueError(f"worked time would become negative ({new_work} h)")
     now = {"plan": was["plan"] if plan_hours is None else plan_hours, "work": new_work}
     await work.caller.call("tasks.update", {"id": t["id"], "timeTracking": now})
-    return {"task": work.number(t), "hours": now, "was": was}
+    return {
+        "task": work.number(t),
+        "hours": now,
+        "was": was,
+        **(await _follow(work, t, ("hours",))),
+    }
 
 
 @tool_errors

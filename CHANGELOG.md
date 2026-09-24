@@ -5,6 +5,54 @@
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-09-25
+
+### Русский
+
+#### Добавлено
+- Клиентские копии задач (настройка `client_copy`: `from`, `to`, `rules`). Задача внутреннего
+  проекта по заказу клиента получает копию в проекте для клиента — на одноимённой доске и в
+  одноимённой колонке, с часами и сроком, с заголовком и описанием для клиента. Связь — строка
+  «Карточка для клиента: ID-…» во внутренней карточке.
+- `yougile_client_copy` — создать или обновить копию; может создать недостающую клиентскую
+  доску с теми же колонками (`create_board`).
+- Копия следует за задачей сама: перенос по колонкам, часы и срок, когда их меняют через
+  `yougile_move_task`, `yougile_log_time`, `yougile_update_task` и кнопки экранов. Сбой
+  синхронизации не отменяет само изменение и показывается в ответе.
+- `yougile_create_task`: `client_title` и `client_description` — сразу создать и копию.
+- `yougile_client_copies` — сверка доски: открытые задачи со связью и без, задачи клиентской
+  доски, правила текста.
+- Сценарий `client_sync`: какие задачи доски нужно показать клиенту, их тексты; копии — после
+  согласия, старые пары, сделанные вручную, не трогаются.
+- `yougile_overview` и инструкции модели сообщают о настройке. Инструменты копий видны, только
+  когда она включена.
+
+#### Изменено
+- `yougile_update_task` с новым описанием сохраняет строку связи с клиентской копией.
+
+### English
+
+#### Added
+- Client copies of tasks (the `client_copy` setting: `from`, `to`, `rules`). A task of the
+  internal project about client work gets a copy in the client project — on the board and in the
+  column of the same name, with the hours and deadline, with a title and description for the
+  client. The link is the line «Карточка для клиента: ID-…» in the internal card.
+- `yougile_client_copy` — create or update the copy; it can create a missing client board with
+  the same columns (`create_board`).
+- The copy follows the task: moves between columns, hours and the deadline, when they change
+  through `yougile_move_task`, `yougile_log_time`, `yougile_update_task` and the screens'
+  buttons. A failed sync does not undo the change itself and is reported in the result.
+- `yougile_create_task`: `client_title` and `client_description` create the copy as well.
+- `yougile_client_copies` — a board's comparison: open tasks with and without a link, the
+  client board's tasks, the rules for the text.
+- The `client_sync` scenario: which tasks of a board to show the client, and their texts;
+  copies after consent, older pairs made by hand are left alone.
+- `yougile_overview` and the model's instructions mention the setting. The copy tools are shown
+  only when it is on.
+
+#### Changed
+- `yougile_update_task` with a new description keeps the line linking the client copy.
+
 ## [0.15.0] — 2026-09-24
 
 ### Русский
@@ -547,7 +595,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.12.1...v0.13.0

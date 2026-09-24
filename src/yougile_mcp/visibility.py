@@ -37,6 +37,14 @@ WRITING_PARAMS = {
 }
 
 
+# Client copies (the client_copy setting): shown only where the setting is on.
+COPY_TOOLS = {
+    "yougile_client_copy": ("tasks.create", "tasks.update"),
+    "yougile_client_copies": ("tasks.list",),
+}
+COPY_PARAMS = ("yougile_create_task", ("client_title", "client_description"))
+
+
 def tool_description(tool: str, operations: Sequence[str] | None = None) -> str:
     ops = by_tool()[tool]
     lines = [TOOLS[tool], "", "Operations ([access]):"]
@@ -84,11 +92,15 @@ def without_screens(tools: Sequence[Tool]) -> list[Tool]:
     return [t for t in tools if t.name not in apps.SCREENS and t.name not in apps.ACTIONS]
 
 
-def visible_tools(tools: Sequence[Tool], policy: Policy) -> list[Tool]:
+def visible_tools(tools: Sequence[Tool], policy: Policy, copies: bool = False) -> list[Tool]:
     shown: list[Tool] = []
     for tool in tools:
         name = tool.name
-        needs = apps.ACTIONS.get(name) or apps.SCREENS.get(name)
+        if name in COPY_TOOLS and not copies:
+            continue
+        if name == COPY_PARAMS[0] and not copies:
+            tool = _without_params(tool, COPY_PARAMS[1], tool.description or "")
+        needs = apps.ACTIONS.get(name) or apps.SCREENS.get(name) or COPY_TOOLS.get(name)
         if needs is not None:
             if all(allowed(policy, op) for op in needs):
                 shown.append(tool)
@@ -123,4 +135,4 @@ class ToolVisibility(Middleware):
             rt = runtime.current()
         except RuntimeError:
             return tools  # no runtime bound (e.g. the hosted server could not resolve the user)
-        return visible_tools(tools, rt.policy)
+        return visible_tools(tools, rt.policy, copies=rt.config.client_copy is not None)

@@ -189,10 +189,13 @@ class FakeYouGile:
             url = f"/user-data/company/{name}"
             return ok({"result": "ok", "url": url, "fullUrl": "https://yougile.test" + url})
         if method == "POST" and path == "/tasks":
-            new = {"id": "t-new", "idTaskCommon": "ID-99", **(body or {})}
+            # the first new task is t-new / ID-99, the next ones t-new2 / ID-100 and so on
+            n = sum(1 for tid in self.tasks if tid.startswith("t-new"))
+            tid = "t-new" + (str(n + 1) if n else "")
+            new = {"id": tid, "idTaskCommon": f"ID-{99 + n}", **(body or {})}
             new.pop("idempotencyKey", None)
-            self.tasks["t-new"] = new
-            return ok({"id": "t-new"}, 201)
+            self.tasks[tid] = new
+            return ok({"id": tid}, 201)
         if method == "POST" and parts[0] == "chats" and parts[-1] == "messages":
             chat = self.messages.setdefault(parts[1], [])
             # A message id is its creation time in ms, so a new one is always the largest.

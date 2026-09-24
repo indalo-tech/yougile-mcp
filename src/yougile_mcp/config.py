@@ -33,6 +33,7 @@ KNOWN_KEYS = {
     "done_columns",
     "instructions",
     "timezone",
+    "client_copy",
 }
 DEFAULT_TIMEZONE = "Europe/Moscow"
 
@@ -81,6 +82,17 @@ class Settings:
         )
 
 
+@dataclass(frozen=True)
+class ClientCopy:
+    """Client-facing copies of tasks: tasks of ``source`` about client work get a twin in
+    ``target`` with a text written for the client, on the board and in the column of the same
+    name; ``rules`` say how to write that text (empty: the built-in rules)."""
+
+    source: str
+    target: str
+    rules: str = ""
+
+
 @dataclass
 class WorkspaceConfig:
     """Defaults and restrictions for one workspace (a repository or a user)."""
@@ -97,6 +109,7 @@ class WorkspaceConfig:
     done_columns: list[str] = field(default_factory=list)
     instructions: str = ""
     timezone: str = DEFAULT_TIMEZONE
+    client_copy: ClientCopy | None = None
     sources: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
@@ -153,7 +166,24 @@ class WorkspaceConfig:
             name = _opt_str(data["timezone"], "timezone", source) or DEFAULT_TIMEZONE
             _zone(name, source)
             self.timezone = name
+        if "client_copy" in data:
+            self.client_copy = _client_copy(data["client_copy"], source)
         self.sources.append(source)
+
+
+def _client_copy(value: Any, source: str) -> ClientCopy | None:
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise ConfigError(f'{source}: client_copy must be {{"from": ..., "to": ..., "rules": ...}}')
+    source_project = _opt_str(value.get("from"), "client_copy.from", source)
+    target = _opt_str(value.get("to"), "client_copy.to", source)
+    if not source_project or not target:
+        raise ConfigError(f"{source}: client_copy needs both from and to projects")
+    rules = value.get("rules") or ""
+    if isinstance(rules, list):
+        rules = "\n".join(str(r) for r in rules)
+    return ClientCopy(source_project, target, str(rules))
 
 
 def _opt_str(value: Any, name: str, source: str) -> str | None:

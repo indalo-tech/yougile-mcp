@@ -82,9 +82,13 @@ def is_overdue(
 _HTML_TAG = re.compile(r"</?(p|br|b|i|u|s|ul|ol|li|a|strong|em|div|span|h\d|pre|code)\b", re.I)
 
 
+def is_html(text: str) -> bool:
+    return bool(_HTML_TAG.search(text))
+
+
 def text_to_html(text: str) -> str:
     """Plain text (with newlines) -> YouGile HTML; text that already is HTML passes as is."""
-    if _HTML_TAG.search(text):
+    if is_html(text):
         return text
     return html.escape(text, quote=False).replace("\n", "<br>")
 

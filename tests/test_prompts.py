@@ -35,7 +35,7 @@ def test_previous_workday_skips_the_weekend():
 async def test_prompts_are_listed_with_titles(client_for):
     async with client_for() as c:
         prompts = {p.name: p for p in await c.list_prompts()}
-    assert set(prompts) == {"standup", "hours_report", "triage"}
+    assert set(prompts) == {"standup", "hours_report", "triage", "client_sync"}
     assert prompts["standup"].title == "Стендап"
     args = {a.name: a.required for a in prompts["hours_report"].arguments}
     assert args == {"since": False, "until": False, "project": False, "person": False}

@@ -12,7 +12,7 @@ from fastmcp.tools import Tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from . import __version__, apps, prompts, runtime, smart
+from . import __version__, apps, copies, prompts, runtime, smart
 from .caller import Caller, tool_errors
 from .catalog import TOOLS, Operation, by_tool, find
 from .completions import ResolveRuntime, completion_handler
@@ -58,6 +58,12 @@ def instructions(rt: runtime.Runtime | None) -> str:
             f"board={rt.config.board or '-'}."
         )
     text += f"\nCompany time zone: {rt.config.timezone}."
+    if cc := rt.config.client_copy:
+        text += (
+            f"\nClient copies are on: tasks of «{cc.source}» about client work get a copy in "
+            f"«{cc.target}» with a text for the client (yougile_client_copy; rules in "
+            "yougile_overview). When you create such a task, create its copy too, or ask."
+        )
     if rt.config.instructions:
         text += "\n\nCompany rules:\n" + rt.config.instructions.strip()
     return text
@@ -176,6 +182,7 @@ def build_server(
         **fastmcp_options,
     )
     smart.register(mcp)
+    copies.register(mcp)
     apps.register(mcp)
     prompts.register(mcp)
     mcp.add_completion_handler(completion_handler(resolve_runtime))
