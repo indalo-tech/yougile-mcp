@@ -25,6 +25,7 @@ from .present import (
     format_ms,
     html_to_text,
     is_done,
+    is_html,
     parse_when,
     status_of,
     task_card,
@@ -180,6 +181,19 @@ async def _follow(work: Work, task: dict, what: tuple[str, ...]) -> dict[str, An
     from . import copies
 
     return await copies.follow(work, task, what)
+
+
+def append_text(description: str | None, addition: str) -> str:
+    """``addition`` after the description, in the description's own format: a new paragraph
+    of HTML, or plain text after an empty line (tasks written through the API often have
+    plain text with markdown)."""
+    base = (description or "").rstrip()
+    if not base:
+        return text_to_html(addition)
+    if is_html(base):
+        added = addition if is_html(addition) else f"<p>{text_to_html(addition)}</p>"
+        return base + added
+    return f"{base}\n\n{addition.strip()}"
 
 
 def _color(value: str) -> str:
@@ -569,6 +583,10 @@ async def yougile_update_task(
     task: TaskRef,
     title: str | None = None,
     description: Annotated[str | None, Field(description="Replaces the description")] = None,
+    append_description: Annotated[
+        str | None,
+        Field(description="Text to add at the end of the description, keeping what is there"),
+    ] = None,
     assignees: Annotated[list[str] | None, Field(description="Replace assignees")] = None,
     add_assignees: list[str] | None = None,
     remove_assignees: list[str] | None = None,
@@ -586,18 +604,24 @@ async def yougile_update_task(
     confirm: Confirm = False,
     ctx: Context | None = None,
 ) -> dict[str, Any]:
-    """Edit a task: title, description, assignees (by name), deadline, planned hours,
-    completion, archive, color, checklist items. Only the given fields change."""
+    """Edit a task: title, description (replace it, or append to it), assignees (by name),
+    deadline, planned hours, completion, archive, color, checklist items. Only the given fields
+    change."""
+    if description is not None and append_description:
+        raise ValueError("pass either description or append_description, not both")
     work = Work(ctx, confirm)
     t = await work.task(task)
     body: dict[str, Any] = {}
     if title is not None:
         body["title"] = title
-    if description is not None:
-        body["description"] = text_to_html(description)
+    if description is not None or append_description:
         from . import copies
 
-        if number := copies.linked(t):  # a new description keeps the client copy's link
+        if append_description:
+            body["description"] = append_text(t.get("description"), append_description)
+        else:
+            body["description"] = text_to_html(description or "")
+        if number := copies.linked(t):  # the client copy's link stays the last line
             body["description"] = copies.with_link(body["description"], number)
     if assignees is not None or add_assignees or remove_assignees:
         current = (

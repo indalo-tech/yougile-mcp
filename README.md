@@ -102,7 +102,7 @@ YOUGILE_API_KEY=ваш_ключ uvx yougile-mcp check
 | `yougile_find_tasks` | поиск по проекту, доске, колонке, исполнителю (имя, почта или `me`), словам из названия или номеру; по умолчанию только открытые. Выполненные за период — `completed_since` / `completed_until`; у выполненных видно время выполнения, у просроченных — `overdue` |
 | `yougile_task` | карточка: где лежит, исполнители, срок, часы, чек-листы, стикеры по названиям (стикеры типов, которых нет в API, — числа, свободный текст — отдельно по id), описание, последние сообщения |
 | `yougile_create_task` | создать: доска и колонка по названию, исполнители по имени или почте, срок датой, план часов, чек-лист, цвет |
-| `yougile_update_task` | изменить поля, выполнить, архивировать, добавить или снять исполнителей, отметить пункты чек-листа, убрать срок |
+| `yougile_update_task` | изменить поля, дописать текст в конец описания, выполнить, архивировать, добавить или снять исполнителей, отметить пункты чек-листа, убрать срок |
 | `yougile_move_task` | перенести в другую колонку; на досках с Workflow проходит все промежуточные колонки |
 | `yougile_log_time` | прибавить часы к факту, не трогая план |
 | `yougile_task_chat` | последние сообщения с именами авторов, отправка сообщения |
@@ -423,7 +423,7 @@ They take names and numbers and show names and dates. Start with them for everyd
 | `yougile_find_tasks` | search by project, board, column, assignee (name, email or `me`), title words or number; open tasks by default. Tasks completed in a period — `completed_since` / `completed_until`; completed tasks show when, overdue ones show `overdue` |
 | `yougile_task` | the card: location, assignees, deadline, hours, checklists, stickers by name (sticker types the API does not describe — numbers, free text — separately, by id), description, latest messages |
 | `yougile_create_task` | create: board and column by name, assignees by name or email, deadline as a date, planned hours, checklist, color |
-| `yougile_update_task` | edit fields, complete, archive, add or remove assignees, check checklist items, remove the deadline |
+| `yougile_update_task` | append text to the description, edit fields, complete, archive, add or remove assignees, check checklist items, remove the deadline |
 | `yougile_move_task` | move to another column; on Workflow boards it passes every intermediate column |
 | `yougile_log_time` | add worked hours, keeping the plan |
 | `yougile_task_chat` | latest messages with author names, post a message |

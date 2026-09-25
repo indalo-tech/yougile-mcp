@@ -153,3 +153,28 @@ async def test_copies_overview_lists_linked_and_unlinked(client_for):
             "client_task": "ID-99",
         }
     ]
+
+
+async def test_append_to_the_description(client_for, fake):
+    async with client_for() as c:
+        await call(c, "yougile_update_task", task="ID-1", append_description="Итог: готово")
+        html = fake.tasks["t-int"]["description"]
+        fake.tasks["t-int"]["description"] = "**Разбор**\n\n- шаг"
+        await call(c, "yougile_update_task", task="ID-1", append_description="Итог")
+        await call(c, "yougile_update_task", task="ID-2", append_description="Первый текст")
+        with pytest.raises(ToolError, match="either description or append_description"):
+            await call(
+                c, "yougile_update_task", task="ID-1", description="a", append_description="b"
+            )
+    assert html == "<p>Первая строка</p><p>Вторая &amp; последняя</p><p>Итог: готово</p>"
+    assert fake.tasks["t-int"]["description"] == "**Разбор**\n\n- шаг\n\nИтог"
+    assert fake.tasks["t-cli"]["description"] == "Первый текст"
+
+
+async def test_appended_text_goes_before_the_client_link(client_for, fake):
+    async with client_for(**COPIES) as c:
+        await call(c, "yougile_client_copy", task="ID-1", **CLIENT_TEXT)
+        await call(c, "yougile_update_task", task="ID-1", append_description="Итог")
+    assert fake.tasks["t-int"]["description"].endswith(
+        "<p>Итог</p><p>Карточка для клиента: ID-99</p>"
+    )

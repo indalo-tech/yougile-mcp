@@ -5,6 +5,25 @@
 
 ## [Unreleased]
 
+## [0.17.0] — 2026-09-25
+
+### Русский
+
+#### Добавлено
+- `yougile_update_task`: `append_description` — дописать текст в конец описания, не трогая
+  то, что там уже есть. Текст добавляется в формате описания: новым абзацем HTML или, если
+  описание — обычный текст с разметкой, после пустой строки. Строка связи с клиентской копией
+  («Карточка для клиента: ID-…») остаётся последней. Вместе с `description` не передаётся.
+
+### English
+
+#### Added
+- `yougile_update_task`: `append_description` — add text at the end of the description,
+  keeping what is already there. The text follows the description's format: a new HTML
+  paragraph or, when the description is plain text with markdown, after an empty line. The
+  line linking the client copy («Карточка для клиента: ID-…») stays last. Not combined with
+  `description`.
+
 ## [0.16.0] — 2026-09-25
 
 ### Русский
@@ -595,7 +614,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.13.0...v0.14.0
