@@ -195,12 +195,17 @@ claude mcp add yougile --scope user -e YOUGILE_API_KEY=ваш_ключ -- uvx "y
   модель спросит, создать ли её с теми же колонками.
 - Во внутренней карточке появляется строка «Карточка для клиента: ID-…». Клиентская карточка о
   внутренней ничего не знает.
-- Дальше копия следует за задачей сама: перенос в колонку с тем же названием, часы и срок —
-  когда их меняют через этот сервер (инструменты и кнопки экранов). Если на клиентской доске
-  нет такой колонки, копия остаётся на месте.
+- Клиентская задача — это результат, и к ней можно привязать несколько внутренних карточек
+  (`client_task`), например дневные записи работы. Её часы — сумма часов этих карточек, срок —
+  самый поздний из их сроков, колонка — та, где самая отстающая открытая карточка; в «Готово» она
+  переходит, когда готовы все. Если у существующей задачи были свои часы, модель сначала спросит,
+  пересчитать ли их по карточкам.
+- Всё это обновляется само, когда карточки меняют через этот сервер (инструменты и кнопки
+  экранов). Колонки, которых нет на клиентской доске («Заморожено», «Документы»), не учитываются.
 - `yougile_create_task` с `client_title` и `client_description` создаёт обе карточки сразу.
-- Сценарий `client_sync` проходит доску: какие задачи без копии относятся к заказу клиента,
-  какие внутренние, а для каких копия уже сделана вручную (такие не трогает), — и создаёт копии
+- Сценарий `client_sync` проходит доску — открытые карточки и сделанные за последние дни:
+  что не для клиента (документы, внутренняя работа), что относится к уже существующему результату,
+  что станет новым результатом, а что — старая пара, сделанная вручную (её не трогает). Действует
   после вашего согласия. `yougile_client_copies` показывает эту сверку данными.
 
 ### Настройки репозитория и пользователя
@@ -519,13 +524,17 @@ details or personal data.
   model asks whether to create it with the same columns.
 - The internal card gets the line «Карточка для клиента: ID-…». The client card knows nothing
   of the internal one.
-- From then on the copy follows the task: moves to the column of the same name, hours and the
-  deadline — whenever they change through this server (tools and screen buttons). If the client
-  board has no such column, the copy stays where it is.
+- A client task is a result, and several internal cards may be tied to it (`client_task`),
+  daily work records for one. Its hours are the sum of theirs, its deadline the latest of theirs,
+  its column that of the least advanced open card; it moves to the done column once all are done.
+  If an existing task had hours of its own, the model first asks whether to recount them.
+- All this keeps up by itself when the cards change through this server (tools and screen
+  buttons). Columns the client board lacks ("Frozen", "Documents") do not count.
 - `yougile_create_task` with `client_title` and `client_description` creates both cards at once.
-- The `client_sync` scenario walks a board: which tasks without a copy are client work, which
-  are internal, which already have a copy made by hand (left alone) — and creates copies after
-  your consent. `yougile_client_copies` gives that comparison as data.
+- The `client_sync` scenario walks a board — open cards and those done lately: what is not for
+  the client (documents, internal work), what belongs to an existing result, what becomes a new
+  result, and what is an older pair made by hand (left alone). It acts after your consent.
+  `yougile_client_copies` gives that comparison as data.
 
 ### Repository and user config
 

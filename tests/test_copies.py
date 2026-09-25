@@ -141,7 +141,9 @@ async def test_copies_overview_lists_linked_and_unlinked(client_for):
         before = await call(c, "yougile_client_copies", board="Разработка / Сайт")
         await call(c, "yougile_client_copy", task="ID-1", **CLIENT_TEXT)
         after = await call(c, "yougile_client_copies", board="Разработка / Сайт")
-    assert [t["number"] for t in before["unlinked"]] == ["ID-1"] and before["linked"] == []
+    # ID-3 is done, but lately: a daily record like it still waits to be tied to a result
+    assert [t["number"] for t in before["unlinked"]] == ["ID-1", "ID-3"]
+    assert before["unlinked"][1]["done"] is True and before["linked"] == []
     assert before["client_board"] == "Клиенты / Сайт"
     assert [t["number"] for t in before["client_board_tasks"]] == ["ID-2"]
     assert after["linked"] == [
@@ -150,6 +152,7 @@ async def test_copies_overview_lists_linked_and_unlinked(client_for):
             "title": "Internal",
             "column": "Очередь",
             "plan_hours": 5,
+            "work_hours": 3,
             "client_task": "ID-99",
         }
     ]
@@ -178,3 +181,44 @@ async def test_appended_text_goes_before_the_client_link(client_for, fake):
     assert fake.tasks["t-int"]["description"].endswith(
         "<p>Итог</p><p>Карточка для клиента: ID-99</p>"
     )
+
+
+CHAIN = {"workflows": {"Разработка / Сайт": ["Очередь", "В работе", "На проверке", "Готово"]}}
+
+
+async def test_several_cards_make_one_client_task(client_for, fake):
+    async with client_for(**COPIES, **CHAIN) as c:
+        await call(c, "yougile_client_copy", task="ID-1", **CLIENT_TEXT)
+        linked_too = await call(c, "yougile_client_copy", task="ID-3", client_task="ID-99")
+        logged = await call(c, "yougile_log_time", task="ID-3", hours=2)
+        moved = await call(c, "yougile_move_task", task="ID-1", column="В работе")
+    assert linked_too["client_task"] == "ID-99" and linked_too["linked"] is True
+    assert linked(fake.tasks["t-done"]) == "ID-99"
+    # hours are the sum of the cards: ID-1 has 5 planned / 3 worked, ID-3 got 2 worked
+    assert logged["client_copy"]["synced"] == ["timeTracking"]
+    assert fake.tasks["t-new"]["timeTracking"] == {"plan": 5.0, "work": 5.0}
+    # the done ID-3 does not pull the result forward: it goes where the open ID-1 is
+    assert moved["client_copy"]["synced"] == ["column"]
+    assert fake.tasks["t-new"]["columnId"] == "c-cli-work"
+    assert fake.calls("POST", "/api-v2/tasks") == 1
+
+
+async def test_linking_to_a_client_task_with_its_own_hours_asks_first(client_for, fake):
+    fake.tasks["t-cli"]["timeTracking"] = {"plan": 8, "work": 8}
+    async with client_for(**COPIES) as c:
+        with pytest.raises(ToolError, match="recount_hours"):
+            await call(c, "yougile_client_copy", task="ID-1", client_task="ID-2")
+        assert linked(fake.tasks["t-int"]) is None
+        result = await call(
+            c, "yougile_client_copy", task="ID-1", client_task="ID-2", recount_hours=True
+        )
+        with pytest.raises(ToolError, match="already linked to ID-2"):
+            await call(c, "yougile_client_copy", task="ID-1", client_task="ID-99")
+    assert result["synced"] == ["deadline", "timeTracking"]
+    assert fake.tasks["t-cli"]["timeTracking"] == {"plan": 5.0, "work": 3.0}
+
+
+async def test_a_new_client_task_needs_its_text(client_for):
+    async with client_for(**COPIES) as c:
+        with pytest.raises(ToolError, match="needs title and description"):
+            await call(c, "yougile_client_copy", task="ID-1")

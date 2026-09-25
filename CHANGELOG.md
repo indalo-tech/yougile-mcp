@@ -5,6 +5,45 @@
 
 ## [Unreleased]
 
+## [0.18.0] — 2026-09-25
+
+### Русский
+
+#### Добавлено
+- Клиентская задача собирается из нескольких внутренних карточек: во внутреннем проекте бывают
+  не только задачи, но и дневные записи работы, а клиенту нужен результат.
+  `yougile_client_copy(client_task=…)` привязывает карточку к существующей клиентской задаче.
+  Если у той были свои часы, не учтённые карточками, инструмент просит согласия пересчитать их
+  (`recount_hours`).
+- `yougile_client_copies` показывает и карточки, сделанные за последние дни (`recent_days`, по
+  умолчанию 14), с часами — чтобы привязать дневные записи к результату.
+
+#### Изменено
+- Клиентская задача следует за всеми привязанными карточками: часы — их сумма, срок — самый
+  поздний, колонка — самой отстающей открытой карточки, «готово» — когда готовы все. Колонки,
+  которых нет на клиентской доске, не учитываются.
+- Сценарий `client_sync` различает документы и внутреннюю работу, работу по существующему
+  результату, новый результат и старые пары, сделанные вручную.
+- Для новой клиентской задачи по-прежнему нужны заголовок и описание; для привязки — нет.
+
+### English
+
+#### Added
+- A client task is made up of several internal cards: an internal project holds daily work
+  records as well as tasks, while the client wants the result. `yougile_client_copy(client_task=…)`
+  ties a card to an existing client task. If that task had hours of its own that no card
+  accounts for, the tool asks for consent to recount them (`recount_hours`).
+- `yougile_client_copies` also shows cards done lately (`recent_days`, 14 by default), with
+  their hours, so daily records can be tied to a result.
+
+#### Changed
+- A client task follows all its cards: hours are their sum, the deadline the latest, the
+  column that of the least advanced open card, done once all are done. Columns the client board
+  lacks do not count.
+- The `client_sync` scenario tells documents and internal work, work on an existing result, a
+  new result and older pairs made by hand apart.
+- A new client task still needs a title and a description; tying a card to one does not.
+
 ## [0.17.0] — 2026-09-25
 
 ### Русский
@@ -614,7 +653,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.14.0...v0.15.0
