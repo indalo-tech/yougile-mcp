@@ -5,6 +5,20 @@
 
 ## [Unreleased]
 
+### Русский
+
+#### Исправлено
+- `yougile_find_tasks`: текст, похожий на номер задачи, но неизвестный YouGile (например,
+  «TD-112» — свой код команды в начале названия), ищется как слова названия, а не обрывает
+  поиск ошибкой 404.
+
+### English
+
+#### Fixed
+- `yougile_find_tasks`: text that looks like a task number but is unknown to YouGile (such as
+  "TD-112", a team's own code at the start of titles) is searched as title words instead of
+  failing the search with a 404.
+
 ## [0.18.0] — 2026-09-25
 
 ### Русский

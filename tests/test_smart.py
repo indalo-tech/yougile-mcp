@@ -55,6 +55,12 @@ async def test_find_tasks_by_place_assignee_and_number(client_for, fake):
         by_words = await call(c, "yougile_find_tasks", text="finished WORK", status="any")
         assert [t["number"] for t in by_words["tasks"]] == ["ID-3"]
 
+        fake.tasks["t-done"]["title"] = "TD-112 Finished work"
+        by_code = await call(c, "yougile_find_tasks", text="td-112", status="any")
+        assert [t["number"] for t in by_code["tasks"]] == ["ID-3"], (
+            "a team code in the title looks like a task number; unknown to YouGile, it is a word"
+        )
+
 
 async def test_find_completed_in_a_period_and_overdue(client_for, fake):
     fake.tasks["t-int"]["deadline"] = {"deadline": 1577836800000}  # 2020-01-01, long past

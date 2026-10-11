@@ -379,10 +379,17 @@ async def search_tasks(
     """The search behind yougile_find_tasks (see its description for the rules)."""
     done_from, done_before = _period(completed_since, completed_until, work.tz)
     if text and TASK_NUMBER.match(text.strip()):
-        task = await work.task(text)
-        s = await work.structure()
-        users = await work.directory.users_by_id()
-        return Found("task number", [task], s, users, work.done_columns(s), work.tz)
+        # A number YouGile does not know is a word of the title: teams prefix titles with
+        # their own codes ("TD-112 …") that look exactly like task numbers.
+        try:
+            task = await work.task(text)
+        except YouGileError as exc:
+            if exc.status != 404:
+                raise
+        else:
+            s = await work.structure()
+            users = await work.directory.users_by_id()
+            return Found("task number", [task], s, users, work.done_columns(s), work.tz)
 
     s = await work.structure()
     done_ids = work.done_columns(s)
