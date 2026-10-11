@@ -68,7 +68,10 @@ async def test_task_card_screen(server_for):
     assert card["mine"] is False and card["client_facing"] is False
 
 
-async def test_task_table_screen_and_refresh(server_for):
+async def test_task_table_screen_and_refresh(server_for, fake):
+    # The fixture's deadline (30.09.2026) has passed: without it the status does not depend on
+    # the day the tests run. Overdue tasks are tested in test_smart.
+    del fake.tasks["t-int"]["deadline"]
     async with drawing(server_for()) as client:
         result = await client.call_tool("yougile_show_tasks", {"board": "Разработка / Сайт"})
         again = await client.call_tool("yougile_app_tasks", {"board": "Разработка / Сайт"})

@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.18.1] — 2026-10-11
+
 ### Русский
 
 #### Исправлено
@@ -667,7 +669,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.18.1...HEAD
+[0.18.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.15.0...v0.16.0
