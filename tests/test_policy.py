@@ -74,3 +74,18 @@ async def test_confirm_projects_only_for_writes(make_runtime):
     assert g.confirm_titles == []
     _, g = await guard(rt, "chats.list_messages", {"chatId": "t-cli"})
     assert g.confirm_titles == []
+
+
+async def test_role_operations_are_scoped_by_their_project(make_runtime):
+    # Role operations carry projectId and the role's own id: the project is projectId.
+    rt = make_runtime(projects=["p-int"])
+    await guard(rt, "projects.update_role", {"projectId": "p-int", "id": "r-1", "name": "x"})
+    with pytest.raises(PolicyError, match="outside the projects"):
+        await guard(rt, "projects.delete_role", {"projectId": "p-cli", "id": "r-1"})
+    rt = make_runtime(confirm_projects=["Клиенты"])
+    for op, params in (
+        ("projects.update_role", {"projectId": "p-cli", "id": "r-1", "name": "x"}),
+        ("projects.delete_role", {"projectId": "p-cli", "id": "r-1"}),
+    ):
+        _, g = await guard(rt, op, params)
+        assert g.confirm_titles == ["Клиенты"], op

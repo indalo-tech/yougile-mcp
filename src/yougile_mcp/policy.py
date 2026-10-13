@@ -11,6 +11,7 @@ import fnmatch
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import quote
 
 from .catalog import Operation
 from .client import YouGileClient, YouGileError
@@ -183,7 +184,7 @@ def _task_project(s: Structure, task: Any) -> str | None:
 async def _fetch_task_project(
     task_id: str, client: YouGileClient, directory: Directory
 ) -> str | None:
-    task = await client.request("GET", f"/tasks/{task_id}")
+    task = await client.request("GET", f"/tasks/{quote(task_id, safe='')}")
     return await directory.project_of_column((task or {}).get("columnId"))
 
 
@@ -198,7 +199,8 @@ async def _scope(
             return _Scope(item_project=lambda _s, p: p.get("id"))
         if name == "create":
             return _Scope()
-        return _Scope(projects={pv.get("id") or pv.get("projectId")})
+        # Role operations carry both: projectId is the project, id is the role.
+        return _Scope(projects={pv.get("projectId") or pv.get("id")})
     if tool == "boards":
         if name == "list":
             pid = query.get("projectId")

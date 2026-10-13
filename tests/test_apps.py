@@ -42,6 +42,18 @@ async def test_screens_only_for_clients_that_draw_them(server_for):
     assert tools["yougile_app_move"].meta["ui"]["visibility"] == ["app"]
 
 
+async def test_buttons_cannot_be_called_by_clients_without_screens(server_for, fake):
+    # Hidden from their list is not enough: a call by name must fail too, before any write.
+    async with Client(server_for()) as client:
+        for name, args in (
+            ("yougile_app_send", {"task": "t-cli", "text": "привет"}),
+            ("yougile_app_complete", {"task": "t-int", "completed": True}),
+        ):
+            with pytest.raises(ToolError, match="button of a screen"):
+                await client.call_tool(name, args)
+    assert not [r for r in fake.requests if r.method != "GET"], "nothing was written"
+
+
 async def test_buttons_follow_permissions(server_for):
     async with drawing(server_for(role="reader")) as client:
         names = {t.name for t in await client.list_tools()}

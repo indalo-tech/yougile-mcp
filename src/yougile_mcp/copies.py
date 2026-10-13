@@ -60,9 +60,23 @@ def rules(cfg: ClientCopy) -> str:
 
 
 def linked(task: dict) -> str | None:
-    """The client twin's number written in an internal task, if any."""
-    match = LINK.search(html_to_text(task.get("description")))
-    return match.group(1) if match else None
+    """The client twin's number written in an internal task, if any: the last link line,
+    which is the one with_link keeps up to date (an older one may linger in edited HTML)."""
+    found = LINK.findall(html_to_text(task.get("description")))
+    return found[-1] if found else None
+
+
+def _check_pair(s: Structure, cfg: ClientCopy, card: dict, twin: dict, number: str) -> None:
+    """A link line is just text in a description: before anything follows it, the card must
+    be in the internal project and the twin in the client one — or a mistyped number would
+    have another internal task's hours, deadline and column overwritten without a question."""
+    if s.project_of_column(card.get("columnId")) != _project(s, cfg.source)["id"]:
+        raise ValueError(f"the card is not in «{cfg.source}»: its client task is not followed")
+    if s.project_of_column(twin.get("columnId")) != _project(s, cfg.target)["id"]:
+        raise ValueError(
+            f"{number}, named in the card's link line, is not in «{cfg.target}»: fix the line "
+            f"«{LINK_LABEL}: …» before the client task can follow the card"
+        )
 
 
 def with_link(description: str | None, number: str) -> str:
@@ -206,6 +220,7 @@ async def copy(
         }
     if number:
         twin = await work.task(number)
+        _check_pair(s, cfg, t, twin, number)
         await _retext(work, twin, title, description)
         synced = await sync(work, t, SYNCED, twin=twin)
         return {"task": work.number(t), "client_task": number, "updated": True, **synced}
@@ -265,8 +280,9 @@ async def sync(
         return {}
     s = await work.structure()
     current = await work.task(task["id"])
-    group = await linked_cards(work, s, current, number)
     twin = twin or await work.task(number)
+    _check_pair(s, work.cfg.client_copy, current, twin, number)
+    group = await linked_cards(work, s, current, number)
     body: dict[str, Any] = {}
     if "hours" in what and _sum_hours(group) != _hours(twin):
         body["timeTracking"] = _sum_hours(group)

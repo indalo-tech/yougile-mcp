@@ -574,6 +574,15 @@ async def yougile_create_task(
         ]
     if color:
         body["color"] = _color(color)
+    if client_title:
+        # The client copy is written after the internal task: its confirmation is asked
+        # first, so that asking (or a «no») cannot leave a second internal task behind.
+        from . import copies
+
+        target = s.find_project(copies.settings(work).target)
+        await work.caller.confirm_before(
+            {target["id"]}, f"tasks.create в «{target.get('title')}»: {client_title}"
+        )
     created = await work.caller.call("tasks.create", body)
     t = await work.task(created["id"])
     users = await work.directory.users_by_id() if t.get("assigned") else {}
@@ -819,6 +828,15 @@ async def attach_files(
     "filename": ...}. A chat message whose text is FILE_MARK + the file's URL is what YouGile
     shows as an attached file.
     """
+    # Asked before the uploads (which need no confirmation): asking after them would upload
+    # every file again on the repeat.
+    project = await work.directory.project_of_column(task.get("columnId"))
+    names = ", ".join(
+        str(p.get("filename") or Path(str(p.get("file_path", ""))).name) for p in uploads
+    )
+    await work.caller.confirm_before(
+        {project} if project else set(), f"files в чат {work.number(task)}: {names}"
+    )
     attached: list[dict[str, str]] = []
     for n, params in enumerate(uploads, 1):
         name = str(params.get("filename") or Path(str(params.get("file_path", ""))).name)

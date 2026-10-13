@@ -96,3 +96,11 @@ async def test_missing_key():
 def test_normalize_base_url():
     assert normalize_base_url("https://ru.yougile.com/api-v2/") == "https://ru.yougile.com"
     assert normalize_base_url("https://yougile.example.com") == "https://yougile.example.com"
+
+
+def test_api_keys_never_reach_the_log():
+    from yougile_mcp.client import _loggable
+
+    assert _loggable("/auth/keys/abc123") == "/auth/keys/***"
+    assert _loggable("/auth/keys/abc123?x=1") == "/auth/keys/***?x=1"
+    assert _loggable("/tasks/t-1") == "/tasks/t-1"

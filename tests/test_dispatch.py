@@ -43,6 +43,15 @@ def test_path_values_are_url_encoded():
     assert prep.path == "/tasks/a%2Fb%20c"
 
 
+def test_dot_segments_cannot_reach_another_resource():
+    for value in ("..", ".", "%2E%2E", " .. "):
+        with pytest.raises(ParamError, match="not a valid id"):
+            prepare(find("projects.delete_role"), {"projectId": "CLIENT", "id": value})
+    with pytest.raises(ParamError, match="chatId is not a valid id"):
+        prepare(find("chats.update_message"), {"chatId": "..", "id": "M", "label": "x"})
+    assert prepare(find("tasks.get"), {"id": "a.b"}).path == "/tasks/a.b"
+
+
 def test_idempotency_key_is_added_to_creates():
     prep = prepare(find("tasks.create"), {"title": "T", "columnId": "c"})
     assert prep.body["idempotencyKey"]

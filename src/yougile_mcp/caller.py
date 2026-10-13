@@ -197,6 +197,27 @@ class Caller:
         task = await self.rt.client.request("GET", f"/tasks/{ref}")
         return {**params, key: task["id"]}
 
+    async def confirm_before(self, project_ids: set[str], what: str) -> None:
+        """Ask now about writes this call makes later into projects that need confirmation.
+
+        A tool that writes elsewhere first (the internal task, the uploaded files) must not
+        reach the question after those writes: asking takes a round trip that runs the tool
+        again — and a «no» would leave them behind. Asked here, the question comes before the
+        first write, and the later write finds it answered."""
+        rt = self.rt
+        if not rt.policy.confirm_refs or not project_ids:
+            return
+        s = await rt.directory.structure()
+        confirm = rt.policy.resolve_projects(rt.policy.confirm_refs, s)
+        titles = sorted(
+            s.projects[p].get("title", p) for p in project_ids & confirm if p in s.projects
+        )
+        pending = [t for t in titles if t not in self.confirmed]
+        if pending:
+            if not await ask_confirmation(self.ctx, what, pending, self.confirm_flag):
+                raise Cancelled()
+            self.confirmed.update(pending)
+
     async def call(self, operation: str, params: dict[str, Any] | None = None) -> Any:
         op = find(operation)
         if op is None:
