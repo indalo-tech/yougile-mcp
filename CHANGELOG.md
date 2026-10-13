@@ -9,6 +9,10 @@
 
 ### Русский
 
+#### Добавлено
+- `yougile_tasks` → `get_log`: история изменений задачи (новая операция API YouGile
+  `GET /tasks/{id}/log`). Права проверяются по проекту задачи.
+
 #### Безопасность
 - Кнопки экранов MCP Apps (`yougile_app_*`) отвечают только клиентам, которые показывают
   экраны. Раньше их скрывали лишь из списка инструментов, а по имени их мог вызвать любой
@@ -30,6 +34,10 @@
   колонку другой внутренней задачи. Читается последняя строка связи.
 
 ### English
+
+#### Added
+- `yougile_tasks` → `get_log`: a task's change history (the new YouGile API operation
+  `GET /tasks/{id}/log`). Permissions are checked by the task's project.
 
 #### Security
 - MCP Apps screen buttons (`yougile_app_*`) answer only clients that show screens. They were

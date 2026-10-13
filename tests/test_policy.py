@@ -89,3 +89,10 @@ async def test_role_operations_are_scoped_by_their_project(make_runtime):
     ):
         _, g = await guard(rt, op, params)
         assert g.confirm_titles == ["Клиенты"], op
+
+
+async def test_a_tasks_log_is_scoped_by_the_tasks_project(make_runtime):
+    rt = make_runtime(projects=["Разработка"])
+    await guard(rt, "tasks.get_log", {"id": "t-int"})
+    with pytest.raises(PolicyError, match="outside the projects"):
+        await guard(rt, "tasks.get_log", {"id": "t-cli"})

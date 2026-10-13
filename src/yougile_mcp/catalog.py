@@ -23,6 +23,7 @@ MAPPING: dict[str, tuple[str | None, str, Access]] = {
     "TaskController_search": ("tasks", "list", "read"),
     "TaskController_searchReversed": ("tasks", "list_newest", "read"),
     "TaskController_get": ("tasks", "get", "read"),
+    "TaskController_getLog": ("tasks", "get_log", "read"),
     "TaskController_create": ("tasks", "create", "write"),
     "TaskController_update": ("tasks", "update", "write"),
     "TaskController_getChatSubscribers": ("tasks", "get_chat_subscribers", "read"),
