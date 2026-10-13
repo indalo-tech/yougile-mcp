@@ -122,7 +122,9 @@ class Work:
         if self.rt.board:
             chosen = structure.boards.get(self.rt.board)
             return structure.board_label(chosen) if chosen else None
-        return self.cfg.board
+        # A hosted server's admin page stores the board's id: show its name.
+        configured = structure.boards.get(self.cfg.board or "")
+        return structure.board_label(configured) if configured else self.cfg.board
 
     def done_columns(self, structure: Structure) -> frozenset[str]:
         """Ids of the columns the workspace treats as done (a title, or "Project / Board /

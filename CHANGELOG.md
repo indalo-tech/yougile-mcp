@@ -5,6 +5,20 @@
 
 ## [Unreleased]
 
+## [0.21.2] — 2026-10-14
+
+### Русский
+
+#### Исправлено
+- Доска по умолчанию, заданная id (так её хранит админка облака), в `yougile_overview`
+  показывается названием «Проект / Доска», а не id.
+
+### English
+
+#### Fixed
+- A default board given by id (as the cloud's admin page stores it) shows in
+  `yougile_overview` as "Project / Board", not as the id.
+
 ## [0.21.1] — 2026-10-14
 
 ### Русский
@@ -864,7 +878,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.21.1...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.21.2...HEAD
+[0.21.2]: https://github.com/indalo-tech/yougile-mcp/compare/v0.21.1...v0.21.2
 [0.21.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.19.0...v0.20.0
