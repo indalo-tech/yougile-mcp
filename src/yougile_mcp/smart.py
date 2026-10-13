@@ -722,8 +722,9 @@ async def yougile_update_task(
     follows = tuple(
         name
         for name, keys in (
-            ("hours", ("timeTracking",)),
-            ("deadline", ("deadline",)),
+            # an archived card leaves its client task's group: its hours and deadline too
+            ("hours", ("timeTracking", "archived")),
+            ("deadline", ("deadline", "archived")),
             # done or archived decides the client task's column (the least advanced open card)
             ("column", ("completed", "archived", "columnId")),
         )
