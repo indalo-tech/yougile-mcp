@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import re
 import time
 from typing import Any
@@ -17,6 +18,7 @@ log = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "https://ru.yougile.com"
 DEFAULT_429_PAUSE = 10.0
+MAX_429_PAUSE = 60.0  # a server asking for longer is not waited on that long
 BACKOFF = (1.0, 3.0, 6.0)
 
 
@@ -61,9 +63,12 @@ def _error_message(payload: Any, fallback: str) -> str:
 
 def _retry_after(resp: httpx2.Response) -> float:
     try:
-        return max(1.0, float(resp.headers.get("Retry-After", "")))
+        pause = float(resp.headers.get("Retry-After", ""))
     except ValueError:
         return DEFAULT_429_PAUSE
+    if not math.isfinite(pause):
+        return DEFAULT_429_PAUSE
+    return min(MAX_429_PAUSE, max(1.0, pause))
 
 
 class YouGileClient:

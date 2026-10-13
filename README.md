@@ -211,8 +211,11 @@ claude mcp add yougile --scope user -e YOUGILE_API_KEY=ваш_ключ -- uvx "y
 ### Настройки репозитория и пользователя
 
 Сервер ищет `.yougile.json` вверх от текущей папки (обычно это корень репозитория) и общий
-файл `~/.yougile-mcp.json`. Настройки репозитория перекрывают общие. Путь к файлу можно задать
-явно через `YOUGILE_CONFIG`.
+файл `~/.yougile-mcp.json`. Настройки репозитория перекрывают общие, но права (`role`,
+`projects`, `deny`, `confirm_projects`) могут только сужать: роль не выше общей, проекты — из
+разрешённых общим файлом, запреты и подтверждения добавляются. Так чужой склонированный
+репозиторий не расширит ваши права. Файл, заданный явно через `YOUGILE_CONFIG`, действует
+целиком.
 
 ```json
 {
@@ -238,7 +241,7 @@ claude mcp add yougile --scope user -e YOUGILE_API_KEY=ваш_ключ -- uvx "y
 | `role` | `reader` — только чтение; `member` — плюс задачи, сообщения, файлы; `admin` (по умолчанию) — всё, включая проекты, доски, колонки, сотрудников, роли и вебхуки |
 | `projects` | работать только с этими проектами (названия или id). Чужие объекты скрыты из списков, запись в них запрещена |
 | `confirm_projects` | запись в эти проекты — только после подтверждения человеком |
-| `deny` | запрещённые операции, можно маской: `users.*`. Удаление через `deleted: true` считается отдельной операцией `<инструмент>.delete`, например `tasks.delete` |
+| `deny` | запрещённые операции, можно маской: `users.*`. Удаление через `deleted: true` считается отдельной операцией `<инструмент>.delete`, например `tasks.delete`; любое удаление (`users.remove`, `projects.delete_role`) — ещё и `<инструмент>.delete`, так что `*.delete` запрещает все |
 | `workflows` | цепочки колонок для досок с расширением Workflow: YouGile не отдаёт их по API. Ключ — `"Проект / Доска"`. Первая колонка цепочки — колонка по умолчанию для новых задач |
 | `done_columns` | колонки, которые означают «сделано», даже если задача не отмечена выполненной: название для всех досок (`"Готово"`) или `"Проект / Доска / Колонка"`. Такие задачи не считаются открытыми и просроченными; перенося задачу туда, сервер отмечает её выполненной, чтобы YouGile запомнил дату, а перенося обратно — снимает отметку |
 | `timezone` | часовой пояс компании для дат, по умолчанию `Europe/Moscow` |
@@ -268,6 +271,7 @@ claude mcp add yougile --scope user -e YOUGILE_API_KEY=ваш_ключ -- uvx "y
 | `YOUGILE_API_KEY` | — | ключ API, обязателен для работы сервера |
 | `YOUGILE_BASE_URL` | `https://ru.yougile.com` | адрес YouGile, например вашего коробочного сервера |
 | `YOUGILE_RATE_LIMIT` | `45` | запросов в минуту на один ключ; `0` отключает ограничитель |
+| `YOUGILE_HTTP_LOCAL_FILES` | — | `1` разрешает в режиме `--transport http` загружать файлы по пути на этом компьютере (по умолчанию — только `content_base64`: к порту может обратиться кто угодно на машине) |
 | `YOUGILE_TIMEZONE` | `Europe/Moscow` | часовой пояс компании, перекрывает `timezone` из файла |
 | `YOUGILE_CONFIG` | — | явный путь к файлу настроек вместо поиска `.yougile.json` |
 | `YOUGILE_MCP_STATE_DIR` | папка кэша ОС | где лежит общий счётчик лимита |
@@ -540,7 +544,10 @@ details or personal data.
 
 The server looks for `.yougile.json` in the current directory and its parents (usually the
 repository root), and for a shared `~/.yougile-mcp.json`. Repository settings override the
-shared ones. `YOUGILE_CONFIG` points to a file explicitly.
+shared ones, but rights (`role`, `projects`, `deny`, `confirm_projects`) only narrow: the role
+is no higher than the shared one, projects come from those the shared file allows, denials and
+confirmations add up — so a cloned repository cannot widen your rights. A file named
+explicitly in `YOUGILE_CONFIG` applies in full.
 
 ```json
 {
@@ -565,7 +572,7 @@ shared ones. `YOUGILE_CONFIG` points to a file explicitly.
 | `role` | `reader` — read only; `member` — plus tasks, messages, files; `admin` (default) — everything, including projects, boards, columns, employees, roles and webhooks |
 | `projects` | work only with these projects (names or ids). Other objects are hidden from lists and cannot be written |
 | `confirm_projects` | writes into these projects need a human confirmation |
-| `deny` | denied operations, masks allowed: `users.*`. Deleting via `deleted: true` counts as a separate `<tool>.delete` operation, e.g. `tasks.delete` |
+| `deny` | denied operations, masks allowed: `users.*`. Deleting via `deleted: true` counts as a separate `<tool>.delete` operation, e.g. `tasks.delete`; any removal (`users.remove`, `projects.delete_role`) is also `<tool>.delete`, so `*.delete` denies them all |
 | `workflows` | column chains for boards using the Workflow extension, which YouGile does not expose via the API. Key: `"Project / Board"`. The first column of a chain is the default for new tasks |
 | `done_columns` | columns that mean "done" even when a task is not marked completed: a title for every board (`"Done"`) or `"Project / Board / Column"`. Such tasks are neither open nor overdue; moving a task there marks it completed so YouGile records the date, moving it back out reopens it |
 | `timezone` | the company time zone for dates, default `Europe/Moscow` |
@@ -594,6 +601,7 @@ error listing the options, so the model asks the user.
 | `YOUGILE_API_KEY` | — | API key, required to run the server |
 | `YOUGILE_BASE_URL` | `https://ru.yougile.com` | YouGile address, e.g. your on-premise server |
 | `YOUGILE_RATE_LIMIT` | `45` | requests per minute per key; `0` disables the limiter |
+| `YOUGILE_HTTP_LOCAL_FILES` | — | `1` lets `--transport http` upload files by a path on this computer (by default only `content_base64`: anyone on the machine can reach the port) |
 | `YOUGILE_TIMEZONE` | `Europe/Moscow` | company time zone, overrides `timezone` from the file |
 | `YOUGILE_CONFIG` | — | explicit config file instead of looking for `.yougile.json` |
 | `YOUGILE_MCP_STATE_DIR` | OS cache dir | where the shared rate-limit counter lives |

@@ -11,6 +11,7 @@ import functools
 import json
 import re
 from collections.abc import Awaitable, Callable
+from contextvars import ContextVar
 from typing import Any, ParamSpec
 
 from fastmcp import Context
@@ -27,6 +28,10 @@ from .dispatch import ParamError, Prepared, error_hint, prepare
 from .policy import PolicyError
 
 MODERN_PROTOCOL = "2026-07-28"
+CONFIRM_PREFIX = "confirm:"  # + the project titles: each project's write is confirmed apart
+
+# Projects the person confirmed writing into during this tool call (all its rounds).
+_confirmed: ContextVar[set[str] | None] = ContextVar("yougile_confirmed", default=None)
 TASK_NUMBER = re.compile(r"^[A-Za-zА-Яа-яЁё]+-\d+$")  # ID-123, DEV-12
 STRUCTURE_TOOLS = {"projects", "boards", "columns"}
 
@@ -78,27 +83,26 @@ async def ask_confirmation(
     )
     if ctx is not None and _client_can_elicit(ctx):
         if _is_modern(ctx):
-            responses = ctx.input_responses
-            if responses is None or "confirm" not in responses:  # an earlier round was a choice
-                params = ElicitRequestFormParams(
-                    message=message,
-                    requested_schema={
-                        "type": "object",
-                        "properties": {"value": {"type": "boolean", "title": "Подтверждаю запись"}},
-                        "required": ["value"],
+            # An answer for these projects, given on an earlier round, was already taken into
+            # account (see _round_state): here the question is always a new one.
+            params = ElicitRequestFormParams(
+                message=message,
+                requested_schema={
+                    "type": "object",
+                    "properties": {"value": {"type": "boolean", "title": "Подтверждаю запись"}},
+                    "required": ["value"],
+                },
+            )
+            raise InputRequired(
+                InputRequiredResult(
+                    result_type="input_required",
+                    input_requests={
+                        CONFIRM_PREFIX + "|".join(titles): ElicitRequest(
+                            method="elicitation/create", params=params
+                        )
                     },
                 )
-                raise InputRequired(
-                    InputRequiredResult(
-                        result_type="input_required",
-                        input_requests={
-                            "confirm": ElicitRequest(method="elicitation/create", params=params)
-                        },
-                    )
-                )
-            answer = responses.get("confirm")
-            content = getattr(answer, "content", None) or {}
-            return getattr(answer, "action", None) == "accept" and bool(content.get("value"))
+            )
         result = await ctx.elicit(message, response_type=bool)
         return result.action == "accept" and bool(getattr(result, "data", False))
     if confirm_flag:
@@ -115,27 +119,41 @@ MAX_CHOICES = 5  # ambiguous names one tool call may ask about
 KIND_WORDS = {"user": "сотрудников", "board": "досок", "project": "проектов", "column": "колонок"}
 
 
-def _round_state(ctx: Context | None) -> tuple[dict[str, str], bool]:
-    """Choices made on earlier rounds of this call (2026-07-28 protocol): request_state carries
-    the older ones, input_responses the newest. The flag says a choice was declined."""
+def _round_state(ctx: Context | None) -> tuple[dict[str, str], set[str], str | None]:
+    """Choices and confirmed projects of earlier rounds of this call (2026-07-28 protocol):
+    request_state carries the older ones, input_responses the newest. The last item says why
+    the call stops: a choice or a confirmation was declined."""
     if ctx is None or not _is_modern(ctx):
-        return {}, False
+        return {}, set(), None
     try:
         state = json.loads(ctx.request_state or "{}")
     except ValueError:
         state = {}
     saved = state.get("choices") if isinstance(state, dict) else None
     choices = {str(k): str(v) for k, v in saved.items()} if isinstance(saved, dict) else {}
-    declined = False
+    kept = state.get("confirmed") if isinstance(state, dict) else None
+    confirmed = {str(t) for t in kept} if isinstance(kept, list) else set()
+    stop: str | None = None
     for key, answer in (ctx.input_responses or {}).items():
-        if not key.startswith(CHOICE_PREFIX):
-            continue
         content = getattr(answer, "content", None) or {}
-        if getattr(answer, "action", None) == "accept" and content.get("value"):
-            choices[key.removeprefix(CHOICE_PREFIX)] = str(content["value"])
-        else:
-            declined = True
-    return choices, declined
+        accepted = getattr(answer, "action", None) == "accept" and bool(content.get("value"))
+        if key.startswith(CHOICE_PREFIX):
+            if accepted:
+                choices[key.removeprefix(CHOICE_PREFIX)] = str(content["value"])
+            else:
+                stop = "the user did not choose"
+        elif key.startswith(CONFIRM_PREFIX):
+            if accepted:
+                confirmed.update(key.removeprefix(CONFIRM_PREFIX).split("|"))
+            else:
+                stop = "the user did not confirm the write"
+    return choices, confirmed, stop
+
+
+def round_state_json(choices: dict[str, str]) -> str:
+    """What the next round needs to know about this one: choices and confirmations made."""
+    confirmed = sorted(_confirmed.get() or ())
+    return json.dumps({"choices": choices, "confirmed": confirmed}, ensure_ascii=False)
 
 
 async def ask_choice(ctx: Context, exc: Ambiguous, choices: dict[str, str]) -> str:
@@ -165,7 +183,7 @@ async def ask_choice(ctx: Context, exc: Ambiguous, choices: dict[str, str]) -> s
                         method="elicitation/create", params=params
                     )
                 },
-                request_state=json.dumps({"choices": choices}, ensure_ascii=False),
+                request_state=round_state_json(choices),
             )
         )
     result = await ctx.elicit(message, response_type={i: {"title": t} for i, t in exc.options})
@@ -179,7 +197,10 @@ class Caller:
         self.rt = runtime.current()
         self.ctx = ctx
         self.confirm_flag = confirm
-        self.confirmed: set[str] = set()
+        # Shared with the call's rounds: what is confirmed once stays confirmed on the rerun.
+        bound = _confirmed.get()
+        self.confirmed: set[str] = bound if bound is not None else set()
+        self.on_write: list[Callable[[], None]] = []  # e.g. forget task listings cached
 
     @property
     def config(self):  # noqa: ANN201 - convenience
@@ -238,8 +259,11 @@ class Caller:
             exc.hint = error_hint(op)  # type: ignore[attr-defined]
             raise
         result = await guard.apply(result, rt.directory)
-        if op.access != "read" and op.tool in STRUCTURE_TOOLS:
-            rt.directory.invalidate()
+        if op.access != "read":
+            if op.tool in STRUCTURE_TOOLS:
+                rt.directory.invalidate()
+            for hook in self.on_write:
+                hook()
         return result
 
 
@@ -273,10 +297,11 @@ def tool_errors(fn: Callable[P, Awaitable[Any]]) -> Callable[P, Awaitable[Any]]:
     @functools.wraps(fn)
     async def wrapper(*args: P.args, **kwargs: P.kwargs) -> Any:
         ctx = kwargs.get("ctx") or next((a for a in args if isinstance(a, Context)), None)
-        choices, declined = _round_state(ctx)
-        if declined:
-            return {"cancelled": True, "reason": "the user did not choose"}
+        choices, confirmed, stop = _round_state(ctx)
+        if stop:
+            return {"cancelled": True, "reason": stop}
         token = bind_choices(choices)
+        confirmed_token = _confirmed.set(confirmed)
         reporting = progress.bind(ctx)
         try:
             while True:
@@ -303,8 +328,7 @@ def tool_errors(fn: Callable[P, Awaitable[Any]]) -> Callable[P, Awaitable[Any]]:
                         ) from exc
                     choices[key] = await ask_choice(ctx, exc, choices)
         except InputRequired as req:
-            if choices and req.result.request_state is None:
-                req.result.request_state = json.dumps({"choices": choices}, ensure_ascii=False)
+            req.result.request_state = round_state_json(choices)
             return req.result
         except Cancelled as exc:
             return {"cancelled": True, "reason": exc.reason}
@@ -317,5 +341,6 @@ def tool_errors(fn: Callable[P, Awaitable[Any]]) -> Callable[P, Awaitable[Any]]:
         finally:
             progress.reset(reporting)
             reset_choices(token)
+            _confirmed.reset(confirmed_token)
 
     return wrapper

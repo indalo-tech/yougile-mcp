@@ -159,6 +159,10 @@ class FakeYouGile:
                     and (not assignee or assignee in (t.get("assigned") or []))
                 ]
                 return ok(page(items))
+            if parts[0] == "group-chats" and len(parts) == 2:
+                if parts[1] == "gc-team":
+                    return ok({"id": "gc-team", "title": "Команда"})
+                return ok({"error": "Not found"}, 404)
             if parts[0] == "tasks" and len(parts) == 3 and parts[2] == "log":
                 task = self.find_task(parts[1])
                 if task is None:

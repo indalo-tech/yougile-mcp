@@ -77,3 +77,41 @@ def test_settings_from_env(tmp_path):
     assert Settings.from_env({}).api_key is None
     with pytest.raises(ConfigError):
         Settings.from_env({"YOUGILE_RATE_LIMIT": "many"})
+
+
+def test_a_repository_config_only_narrows_rights(tmp_path):
+    home, repo = tmp_path / "home", tmp_path / "repo"
+    repo.mkdir()
+    home.mkdir()
+    write(
+        home / ".yougile-mcp.json",
+        {"role": "member", "projects": ["Разработка", "Клиенты"], "deny": ["tasks.delete"]},
+    )
+    write(
+        repo / ".yougile.json",
+        {
+            "role": "admin",  # wider: ignored
+            "projects": ["Клиенты", "Чужой"],  # «Чужой» is not allowed by the user
+            "deny": ["users.*"],
+            "confirm_projects": ["Клиенты"],
+            "board": "Сайт",  # not a right: applies as before
+        },
+    )
+    cfg = load_workspace_config(cwd=repo, env={}, home=home)
+    assert cfg.role == "member" and cfg.projects == ["Клиенты"]
+    assert cfg.deny == ["tasks.delete", "users.*"] and cfg.confirm_projects == ["Клиенты"]
+    assert cfg.board == "Сайт"
+    assert any("role 'admin' ignored" in w for w in cfg.warnings)
+    assert any("Чужой" in w for w in cfg.warnings)
+    write(repo / ".yougile.json", {"projects": None, "role": "reader"})
+    cfg = load_workspace_config(cwd=repo, env={}, home=home)
+    assert cfg.projects == ["Разработка", "Клиенты"] and cfg.role == "reader"
+
+
+def test_http_mode_reads_no_local_files_unless_asked(make_runtime):
+    from yougile_mcp.__main__ import for_transport
+
+    rt = make_runtime()
+    assert for_transport(rt, "stdio", {}).allow_local_files
+    assert not for_transport(rt, "http", {}).allow_local_files
+    assert for_transport(rt, "http", {"YOUGILE_HTTP_LOCAL_FILES": "1"}).allow_local_files

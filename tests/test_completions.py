@@ -52,6 +52,9 @@ async def test_projects_outside_the_allowlist_are_not_offered(client_for):
     async with client_for(projects=["Разработка"]) as c:
         assert await values(c, "triage", "project") == ["Разработка"]
         assert await values(c, "triage", "board") == ["Разработка / Сайт"]
+        # a board of another project is not a way to see its columns
+        columns = await values(c, "triage", "column", board="Клиенты / Сайт")
+        assert columns == sorted(["Очередь", "В работе", "На проверке", "Готово"])
 
 
 async def test_hosted_servers_resolve_the_runtime(make_runtime):

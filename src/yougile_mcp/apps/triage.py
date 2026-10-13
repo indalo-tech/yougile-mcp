@@ -52,6 +52,8 @@ PROBLEMS = {
 
 
 def queue_column(work: Work, s: Structure, board_id: str, column: str | None) -> dict:
+    if board_id not in s.boards:
+        raise ValueError(f"no such board: {board_id}")
     if column:
         return s.find_column(column, board_id)
     chain = work.workflow(s, board_id)
@@ -97,7 +99,7 @@ def _row(t: dict, work: Work, users: dict[str, dict], now: datetime, done_ids) -
 
 
 async def state(work: Work, board_id: str, column: str | None = None) -> dict[str, Any]:
-    s = await work.structure()
+    s = await work.structure_with_board(board_id)
     col = queue_column(work, s, board_id, column)
     users = await work.directory.users_by_id()
     done_ids = work.done_columns(s)

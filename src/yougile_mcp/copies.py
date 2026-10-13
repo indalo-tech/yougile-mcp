@@ -66,6 +66,28 @@ def linked(task: dict) -> str | None:
     return found[-1] if found else None
 
 
+async def _one_board(work: Work, s: Structure, cfg: ClientCopy, card: dict, number: str) -> None:
+    """A client task follows the cards of one internal board (its hours are their sum, its
+    column the least advanced one's): a card from another board would make them jump."""
+    board_id = s.board_of_column(card.get("columnId"))
+    source = _project(s, cfg.source)["id"]
+    tasks, _ = await work.list_tasks({})  # one listing (a few pages), not one per column
+    for t in tasks:
+        other = s.board_of_column(t.get("columnId"))
+        if (
+            other
+            and other != board_id
+            and s.project_of_column(t.get("columnId")) == source
+            and not t.get("deleted")
+            and linked(t) == number
+        ):
+            raise ValueError(
+                f"{number} already follows cards of «{s.boards[other].get('title')}»: a client "
+                "task follows the cards of one internal board. Link this card to another "
+                "client task, or move it to that board first"
+            )
+
+
 def _check_pair(s: Structure, cfg: ClientCopy, card: dict, twin: dict, number: str) -> None:
     """A link line is just text in a description: before anything follows it, the card must
     be in the internal project and the twin in the client one — or a mistyped number would
@@ -192,6 +214,7 @@ async def copy(
         twin_number = work.number(twin)
         if number and number != twin_number:
             raise ValueError(f"{work.number(t)} is already linked to {number}")
+        await _one_board(work, s, cfg, t, twin_number)
         if not number:
             others = await linked_cards(work, s, t, twin_number)
             mine = _hours(t)
@@ -307,7 +330,12 @@ async def linked_cards(work: Work, s: Structure, card: dict, number: str) -> lis
     group: list[dict] = []
     for column in s.columns_of_board(board_id) if board_id else []:
         tasks, _ = await work.list_tasks({"columnId": column["id"]})
-        group += [t for t in tasks if not t.get("deleted") and linked(t) == number]
+        group += [
+            t
+            for t in tasks
+            # an archived card is set aside: it must not hold the client task where it was
+            if not t.get("deleted") and not t.get("archived") and linked(t) == number
+        ]
     if not any(t["id"] == card["id"] for t in group) and linked(card) == number:
         group.append(card)
     return group

@@ -123,7 +123,10 @@ class WorkspaceConfig:
         cfg.merge(data, source)
         return cfg
 
-    def merge(self, data: Mapping[str, Any], source: str) -> None:
+    def merge(self, data: Mapping[str, Any], source: str, *, narrow: bool = False) -> None:
+        """Apply a config file. ``narrow``: a repository's file, which anyone who wrote the
+        repository controls — it may restrict rights (role, projects, deny, confirmations)
+        but never widen what the user's own file allows."""
         if not isinstance(data, Mapping):
             raise ConfigError(f"{source}: top level must be a JSON object")
         if any(k.lower() in ("api_key", "apikey", "key", "token") for k in data):
@@ -138,17 +141,40 @@ class WorkspaceConfig:
         if "role" in data:
             if data["role"] not in ROLES:
                 raise ConfigError(f"{source}: role must be one of {', '.join(ROLES)}")
-            self.role = data["role"]
+            if narrow and ROLES.index(data["role"]) > ROLES.index(self.role):
+                self.warnings.append(
+                    f"{source}: role {data['role']!r} ignored, the user's config allows "
+                    f"{self.role!r}"
+                )
+            else:
+                self.role = data["role"]
         if "projects" in data:
-            self.projects = (
+            projects = (
                 None
                 if data["projects"] is None
                 else _str_list(data["projects"], "projects", source)
             )
+            if narrow and self.projects is not None:
+                if projects is None:
+                    self.warnings.append(f"{source}: projects: null ignored (narrows only)")
+                else:
+                    wider = [p for p in projects if p not in self.projects]
+                    if wider:
+                        self.warnings.append(
+                            f"{source}: projects {', '.join(wider)} ignored: not allowed by the "
+                            "user's config"
+                        )
+                    self.projects = [p for p in projects if p in self.projects]
+            else:
+                self.projects = projects
         if "confirm_projects" in data:
-            self.confirm_projects = _str_list(data["confirm_projects"], "confirm_projects", source)
+            extra = _str_list(data["confirm_projects"], "confirm_projects", source)
+            self.confirm_projects = (
+                list(dict.fromkeys([*self.confirm_projects, *extra])) if narrow else extra
+            )
         if "deny" in data:
-            self.deny = _str_list(data["deny"], "deny", source)
+            extra = _str_list(data["deny"], "deny", source)
+            self.deny = list(dict.fromkeys([*self.deny, *extra])) if narrow else extra
         if "workflows" in data:
             wf = data["workflows"]
             if not isinstance(wf, Mapping):
@@ -232,7 +258,9 @@ def load_workspace_config(
     else:
         path = find_repo_config((cwd or Path.cwd()).resolve())
     if path is not None and path != global_file:
-        cfg.merge(_read_json(path), str(path))
+        # A found .yougile.json comes with a repository (possibly someone else's): it only
+        # narrows. A file named in YOUGILE_CONFIG is the user's own choice and applies fully.
+        cfg.merge(_read_json(path), str(path), narrow=not explicit)
     if tz_name := env.get("YOUGILE_TIMEZONE"):
         _zone(tz_name, "YOUGILE_TIMEZONE")
         cfg.timezone = tz_name

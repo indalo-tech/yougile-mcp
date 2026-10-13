@@ -5,6 +5,87 @@
 
 ## [Unreleased]
 
+## [0.21.0] — 2026-10-14
+
+### Русский
+
+#### Безопасность
+- Права из `.yougile.json` репозитория только сужают общие (`~/.yougile-mcp.json`): роль не
+  выше общей, проекты — из разрешённых общим файлом, запреты и подтверждения добавляются. Чужой
+  склонированный репозиторий больше не расширит права. Файл из `YOUGILE_CONFIG` действует целиком.
+- Режим `--transport http` не читает файлы с диска (`yougile_attach_file` по пути) — только
+  `content_base64`: к порту может обратиться любой процесс на машине. Включить чтение файлов:
+  `YOUGILE_HTTP_LOCAL_FILES=1`.
+- Подтверждение записи спрашивается по каждому клиентскому проекту отдельно: «да» на запись в
+  один проект не распространяется на другой проект того же вызова.
+- Неизвестный id чата отклоняется («нет такой задачи или группового чата»), а не считается
+  групповым чатом уровня компании: id, который не удалось проверить, проходил мимо списка
+  разрешённых проектов.
+- `text_to_html` пропускает только разметку, которой пользуется YouGile (абзацы, списки,
+  ссылки http/https/mailto, выделение, заголовки, код), остальное экранируется: `<script>`,
+  `onclick`, ссылки `javascript:`. Раньше текст с любым тегом уходил как есть.
+- Запрет `*.delete` (и `<инструмент>.delete`) распространяется на любое удаление:
+  `users.remove`, `projects.delete_role`, удаление сообщения через `deleted: true`.
+- Подзадачи (`subtasks` в `tasks.create`/`tasks.update`) проверяются по своим проектам: задачу
+  из неразрешённого проекта нельзя привязать подзадачей, а привязка задачи клиентского проекта
+  спрашивает подтверждение.
+- Автодополнение колонок не показывает колонки доски из неразрешённого проекта.
+
+#### Исправлено
+- Клиентские копии: архивная карточка не держит клиентскую задачу в своей колонке; выполнение и
+  архивирование карточки синхронизируются; клиентская задача следует за карточками одной
+  внутренней доски (привязка карточки с другой доски отклоняется с объяснением).
+- Цепочка `workflows` с переименованной или удалённой колонкой больше не ломает вызовы: она
+  пропускается с предупреждением в логе, как будто не задана.
+- Экраны доски и разбора очереди с неизвестным id доски отвечают понятной ошибкой «нет такой
+  доски» вместо внутренней ошибки.
+
+#### Изменено
+- Пауза по `Retry-After` от YouGile — не больше 60 секунд (бесконечность и мусор → 10 с).
+- Загрузка справочников (проекты, доски, колонки, люди, стикеры) — не больше 50 страниц.
+- Списки задач запоминаются на время одного вызова (экран просит один список дважды) и
+  забываются после любой записи.
+
+### English
+
+#### Security
+- A repository's `.yougile.json` only narrows the shared rights (`~/.yougile-mcp.json`): the
+  role is no higher, projects come from those the shared file allows, denials and confirmations
+  add up. A cloned repository can no longer widen your rights. A file named in
+  `YOUGILE_CONFIG` applies in full.
+- `--transport http` reads no files from disk (`yougile_attach_file` by path), only
+  `content_base64`: any process on the machine can reach the port. To allow it:
+  `YOUGILE_HTTP_LOCAL_FILES=1`.
+- Writes are confirmed per client project: a "yes" for one project does not cover another
+  project in the same call.
+- An unknown chat id is refused ("no such task or group chat") instead of being taken for a
+  company-level group chat: an id that could not be checked slipped past the project
+  allowlist.
+- `text_to_html` keeps only the markup YouGile uses (paragraphs, lists, http/https/mailto links,
+  emphasis, headings, code) and escapes the rest: `<script>`, `onclick`, `javascript:` links.
+  Text with any tag used to pass as is.
+- A `*.delete` (or `<tool>.delete`) rule covers every removal: `users.remove`,
+  `projects.delete_role`, deleting a message via `deleted: true`.
+- Subtasks (`subtasks` in `tasks.create`/`tasks.update`) are checked by their own projects: a
+  task from a project outside the allowlist cannot be linked as a subtask, and linking a client
+  project's task asks for confirmation.
+- Column completions no longer list the columns of a board outside the allowed projects.
+
+#### Fixed
+- Client copies: an archived card no longer holds the client task in its column; completing and
+  archiving a card sync; a client task follows the cards of one internal board (linking a card
+  from another board is refused with an explanation).
+- A `workflows` chain with a renamed or removed column no longer breaks calls: it is skipped
+  with a warning in the log, as if not set.
+- The board and triage screens answer an unknown board id with a plain "no such board" error
+  instead of an internal one.
+
+#### Changed
+- The pause on YouGile's `Retry-After` is capped at 60 seconds (infinity or garbage → 10 s).
+- Loading the directory (projects, boards, columns, people, stickers) stops at 50 pages.
+- Task listings are remembered for one call (a screen asks for the same list twice) and
+  forgotten after any write.
+
 ## [0.20.0] — 2026-10-13
 
 ### Русский
@@ -765,7 +846,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.20.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.18.1...v0.19.0
 [0.18.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.18.0...v0.18.1

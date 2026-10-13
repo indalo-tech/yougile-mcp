@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import dataclasses
 import getpass
 import logging
 import os
@@ -36,13 +37,24 @@ def _load() -> tuple[Settings, Any]:
     return settings, config
 
 
+def for_transport(
+    rt: runtime.Runtime, transport: str, env: dict[str, str] | None = None
+) -> runtime.Runtime:
+    """Over HTTP anyone who reaches the port acts with this key: no reading of this computer's
+    files for them (uploads take content_base64) unless YOUGILE_HTTP_LOCAL_FILES=1."""
+    env = os.environ if env is None else env
+    if transport != "stdio" and env.get("YOUGILE_HTTP_LOCAL_FILES") != "1":
+        return dataclasses.replace(rt, allow_local_files=False)
+    return rt
+
+
 def cmd_serve(args: argparse.Namespace) -> None:
     from .server import build_server
 
     settings, config = _load()
     if not settings.api_key:
         sys.exit("yougile-mcp: set YOUGILE_API_KEY (run `yougile-mcp setup` to issue a key)")
-    rt = runtime.build_local_runtime(settings, config)
+    rt = for_transport(runtime.build_local_runtime(settings, config), args.transport)
     runtime.set_default(rt)
     server = build_server(rt)
     if args.transport == "stdio":

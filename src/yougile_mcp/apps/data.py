@@ -226,7 +226,7 @@ def _board_task(
 
 async def board(work: Work, board_id: str, assignee: str | None = None) -> dict[str, Any]:
     """The board's columns with their cards; ``assignee`` (an id) narrows the cards."""
-    s = await work.structure()
+    s = await work.structure_with_board(board_id)
     b = s.boards[board_id]
     columns = s.columns_of_board(board_id)
     done_ids = work.done_columns(s)

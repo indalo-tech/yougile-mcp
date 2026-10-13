@@ -5,6 +5,8 @@ exactly as for the domain tools.
 """
 
 import copy
+import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, time, timedelta
 from pathlib import Path
@@ -33,6 +35,8 @@ from .present import (
     text_to_html,
     user_label,
 )
+
+log = logging.getLogger(__name__)
 
 MAX_PAGES = 10  # 10 000 tasks per search is plenty and protects the shared rate limit
 PER_COLUMN_THRESHOLD = 4  # up to this many columns: one filtered request per column
@@ -65,9 +69,22 @@ class Work:
         self.cfg = self.rt.config
         self.tz = self.cfg.tz
         self.directory = self.rt.directory
+        # Task listings of this call, by query: a screen asks for the same list twice (done
+        # and open work); any write in the call forgets them, so nothing stale is read back.
+        self._listings: dict[str, tuple[list[dict], bool]] = {}
+        self.caller.on_write.append(self._listings.clear)
 
     async def structure(self) -> Structure:
         return await self.directory.structure()
+
+    async def structure_with_board(self, board_id: str) -> Structure:
+        """The structure, reloaded once if the board is not in it (maybe just created)."""
+        s = await self.directory.structure()
+        if board_id not in s.boards:
+            s = await self.directory.structure(refresh=True)
+        if board_id not in s.boards:
+            raise ValueError(f"no such board: {board_id}")
+        return s
 
     async def task(self, ref: str) -> dict:
         return await self.caller.call("tasks.get", {"id": ref.strip()})
@@ -127,7 +144,12 @@ class Work:
             except (NotFound, Ambiguous):
                 continue
             if board["id"] == board_id:
-                return [structure.find_column(title, board_id)["id"] for title in chain]
+                try:
+                    return [structure.find_column(title, board_id)["id"] for title in chain]
+                except (NotFound, Ambiguous) as exc:
+                    # A renamed or removed column breaks the chain: work as if none was set.
+                    log.warning("workflow of %r ignored: %s", key, exc)
+                    return None
         return None
 
     async def user_ids(self, refs: list[str]) -> list[str]:
@@ -141,6 +163,15 @@ class Work:
         return body
 
     async def list_tasks(self, query: dict[str, Any]) -> tuple[list[dict], bool]:
+        key = json.dumps(query, sort_keys=True, default=str)
+        if key in self._listings:
+            tasks, cut = self._listings[key]
+            return list(tasks), cut
+        tasks, cut = await self._list_tasks(query)
+        self._listings[key] = (tasks, cut)
+        return list(tasks), cut
+
+    async def _list_tasks(self, query: dict[str, Any]) -> tuple[list[dict], bool]:
         tasks: list[dict] = []
         for page_no in range(MAX_PAGES):
             page = await self.caller.call(
@@ -689,7 +720,14 @@ async def yougile_update_task(
         raise ValueError("nothing to change: pass at least one field")
     await work.caller.call("tasks.update", {"id": t["id"], **body})
     follows = tuple(
-        name for name, key in (("hours", "timeTracking"), ("deadline", "deadline")) if key in body
+        name
+        for name, keys in (
+            ("hours", ("timeTracking",)),
+            ("deadline", ("deadline",)),
+            # done or archived decides the client task's column (the least advanced open card)
+            ("column", ("completed", "archived", "columnId")),
+        )
+        if any(k in body for k in keys)
     )
     return {
         "task": work.number(t),

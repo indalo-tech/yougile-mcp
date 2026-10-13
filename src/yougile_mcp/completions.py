@@ -15,7 +15,7 @@ from typing import Any
 from mcp.types import Completion, PromptReference
 
 from . import runtime
-from .directory import NotFound, Structure, _norm
+from .directory import Structure, _norm
 
 log = logging.getLogger(__name__)
 
@@ -49,14 +49,14 @@ def _boards(rt: runtime.Runtime, s: Structure, project: str | None) -> list[str]
 
 
 def _columns(rt: runtime.Runtime, s: Structure, board: str | None) -> list[str]:
+    ids = {p["id"] for p in _allowed_projects(rt, s)}
     if board:
         try:
             found = s.find_board(board)
-        except (NotFound, LookupError):
+        except LookupError:
             found = None
-        if found is not None:
+        if found is not None and found.get("projectId") in ids:
             return [c.get("title") for c in s.columns_of_board(found["id"])]
-    ids = {p["id"] for p in _allowed_projects(rt, s)}
     return sorted(
         {c.get("title") for c in s.columns.values() if s.project_of_column(c["id"]) in ids}
     )
