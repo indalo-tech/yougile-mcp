@@ -288,6 +288,25 @@ async def test_archived_cards_do_not_hold_the_client_task(make_runtime, fake):
     assert [t["id"] for t in group] == ["t-int"]
 
 
+async def test_archiving_the_lagging_card_lets_the_client_task_move_on(client_for, fake):
+    fake.tasks["t-int"].update(columnId="c-int-work", description="Карточка для клиента: ID-2")
+    fake.tasks["t-int"]["timeTracking"] = {"plan": 0, "work": 1}
+    fake.tasks["t-lag"] = {
+        "id": "t-lag",
+        "title": "Отстающая",
+        "columnId": "c-int-queue",
+        "idTaskCommon": "ID-8",
+        "timeTracking": {"plan": 0, "work": 0.5},
+        "description": "Карточка для клиента: ID-2",
+    }
+    fake.tasks["t-cli"]["timeTracking"] = {"plan": 0, "work": 1.5}
+    async with client_for(**COPIES) as c:
+        result = await call(c, "yougile_update_task", task="ID-8", archived=True)
+    assert {"column", "timeTracking"} <= set(result["client_copy"]["synced"])
+    assert fake.tasks["t-cli"]["columnId"] == "c-cli-work"
+    assert fake.tasks["t-cli"]["timeTracking"] == {"plan": 0, "work": 1.0}
+
+
 async def test_completing_a_linked_card_syncs_its_client_task(client_for, fake, monkeypatch):
     from yougile_mcp import copies
 
@@ -301,7 +320,7 @@ async def test_completing_a_linked_card_syncs_its_client_task(client_for, fake, 
     fake.tasks["t-int"]["description"] = "Карточка для клиента: ID-2"
     async with client_for(**COPIES) as c:
         await call(c, "yougile_update_task", task="ID-1", completed=True)
-    assert seen == [("t-int", ("column",))]
+    assert seen == [("t-int", ("column",))]  # completing keeps the card in the group
 
 
 async def test_a_client_task_follows_cards_of_one_board(client_for, fake, monkeypatch):

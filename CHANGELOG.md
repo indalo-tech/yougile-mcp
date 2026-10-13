@@ -5,6 +5,24 @@
 
 ## [Unreleased]
 
+## [0.21.1] — 2026-10-14
+
+### Русский
+
+#### Исправлено
+- Клиентские копии: архивирование отстающей карточки теперь сразу двигает клиентскую задачу по
+  оставшимся карточкам. Раньше архивная карточка, с которой пришёл вызов, сама возвращалась в
+  группу и продолжала держать клиентскую задачу в своей колонке (нашлось живой проверкой).
+  Часы и срок клиентской задачи при архивировании тоже пересчитываются сразу.
+
+### English
+
+#### Fixed
+- Client copies: archiving the lagging card now moves the client task on by the remaining
+  cards at once. The archived card the call came from used to put itself back into the group
+  and keep holding the client task in its column (found by a live check). The client task's
+  hours and deadline are recounted on archiving too.
+
 ## [0.21.0] — 2026-10-14
 
 ### Русский
@@ -846,7 +864,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.21.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.21.1...HEAD
+[0.21.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.18.1...v0.19.0

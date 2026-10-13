@@ -336,7 +336,10 @@ async def linked_cards(work: Work, s: Structure, card: dict, number: str) -> lis
             # an archived card is set aside: it must not hold the client task where it was
             if not t.get("deleted") and not t.get("archived") and linked(t) == number
         ]
-    if not any(t["id"] == card["id"] for t in group) and linked(card) == number:
+    # The card itself may be missing from the listings (just created); an archived one is
+    # missing on purpose — e.g. it is the card just archived, which must let go too.
+    set_aside = card.get("archived") or card.get("deleted")
+    if not set_aside and linked(card) == number and not any(t["id"] == card["id"] for t in group):
         group.append(card)
     return group
 
