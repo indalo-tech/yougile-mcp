@@ -18,15 +18,30 @@ def test_role_levels():
 
 def test_deny_patterns_and_soft_delete_action():
     assert action_names(find("tasks.update"), {"deleted": True}) == ["tasks.update", "tasks.delete"]
-    assert (
-        action_names(find("chats.update_message"), {"deleted": True})[-1] == "chats.delete_message"
-    )
+    assert action_names(find("chats.update_message"), {"deleted": True}) == [
+        "chats.update_message",
+        "chats.delete_message",
+        "chats.delete",
+    ]
     policy = Policy(deny=["tasks.delete", "users.*"])
     policy.check_static(find("tasks.update"), {"title": "ok"})
     with pytest.raises(PolicyError, match="tasks.delete is denied"):
         policy.check_static(find("tasks.update"), {"deleted": True})
     with pytest.raises(PolicyError, match="users.remove is denied"):
         policy.check_static(find("users.remove"), None)
+
+
+def test_a_delete_rule_covers_every_removal():
+    policy = Policy(deny=["*.delete"])
+    policy.check_static(find("projects.update_role"), {"name": "x"})
+    for op, body in (
+        ("users.remove", None),
+        ("projects.delete_role", None),
+        ("chats.update_message", {"deleted": True}),
+        ("tasks.update", {"deleted": True}),
+    ):
+        with pytest.raises(PolicyError, match="denied"):
+            policy.check_static(find(op), body)
 
 
 async def guard(rt, op_name, params):
@@ -104,3 +119,17 @@ async def test_an_unknown_chat_is_refused_not_taken_for_a_group_chat(make_runtim
     await guard(rt, "chats.list_messages", {"chatId": "gc-team"})  # a group chat: company-level
     with pytest.raises(PolicyError, match="no such task or group chat"):
         await guard(rt, "chats.list_messages", {"chatId": "nope"})
+
+
+async def test_subtasks_from_other_projects_are_outside_the_allowlist(make_runtime):
+    rt = make_runtime(projects=["Разработка"])
+    await guard(rt, "tasks.update", {"id": "t-int", "subtasks": ["t-done"]})
+    with pytest.raises(PolicyError, match="outside the projects"):
+        await guard(rt, "tasks.update", {"id": "t-int", "subtasks": ["t-cli"]})
+    with pytest.raises(PolicyError, match="outside the projects"):
+        await guard(
+            rt, "tasks.create", {"title": "x", "columnId": "c-int-queue", "subtasks": ["t-cli"]}
+        )
+    rt = make_runtime(confirm_projects=["Клиенты"])
+    _, g = await guard(rt, "tasks.update", {"id": "t-int", "subtasks": ["t-cli"]})
+    assert g.confirm_titles == ["Клиенты"]

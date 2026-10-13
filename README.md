@@ -241,7 +241,7 @@ claude mcp add yougile --scope user -e YOUGILE_API_KEY=ваш_ключ -- uvx "y
 | `role` | `reader` — только чтение; `member` — плюс задачи, сообщения, файлы; `admin` (по умолчанию) — всё, включая проекты, доски, колонки, сотрудников, роли и вебхуки |
 | `projects` | работать только с этими проектами (названия или id). Чужие объекты скрыты из списков, запись в них запрещена |
 | `confirm_projects` | запись в эти проекты — только после подтверждения человеком |
-| `deny` | запрещённые операции, можно маской: `users.*`. Удаление через `deleted: true` считается отдельной операцией `<инструмент>.delete`, например `tasks.delete` |
+| `deny` | запрещённые операции, можно маской: `users.*`. Удаление через `deleted: true` считается отдельной операцией `<инструмент>.delete`, например `tasks.delete`; любое удаление (`users.remove`, `projects.delete_role`) — ещё и `<инструмент>.delete`, так что `*.delete` запрещает все |
 | `workflows` | цепочки колонок для досок с расширением Workflow: YouGile не отдаёт их по API. Ключ — `"Проект / Доска"`. Первая колонка цепочки — колонка по умолчанию для новых задач |
 | `done_columns` | колонки, которые означают «сделано», даже если задача не отмечена выполненной: название для всех досок (`"Готово"`) или `"Проект / Доска / Колонка"`. Такие задачи не считаются открытыми и просроченными; перенося задачу туда, сервер отмечает её выполненной, чтобы YouGile запомнил дату, а перенося обратно — снимает отметку |
 | `timezone` | часовой пояс компании для дат, по умолчанию `Europe/Moscow` |
@@ -572,7 +572,7 @@ explicitly in `YOUGILE_CONFIG` applies in full.
 | `role` | `reader` — read only; `member` — plus tasks, messages, files; `admin` (default) — everything, including projects, boards, columns, employees, roles and webhooks |
 | `projects` | work only with these projects (names or ids). Other objects are hidden from lists and cannot be written |
 | `confirm_projects` | writes into these projects need a human confirmation |
-| `deny` | denied operations, masks allowed: `users.*`. Deleting via `deleted: true` counts as a separate `<tool>.delete` operation, e.g. `tasks.delete` |
+| `deny` | denied operations, masks allowed: `users.*`. Deleting via `deleted: true` counts as a separate `<tool>.delete` operation, e.g. `tasks.delete`; any removal (`users.remove`, `projects.delete_role`) is also `<tool>.delete`, so `*.delete` denies them all |
 | `workflows` | column chains for boards using the Workflow extension, which YouGile does not expose via the API. Key: `"Project / Board"`. The first column of a chain is the default for new tasks |
 | `done_columns` | columns that mean "done" even when a task is not marked completed: a title for every board (`"Done"`) or `"Project / Board / Column"`. Such tasks are neither open nor overdue; moving a task there marks it completed so YouGile records the date, moving it back out reopens it |
 | `timezone` | the company time zone for dates, default `Europe/Moscow` |

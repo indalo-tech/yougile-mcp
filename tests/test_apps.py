@@ -160,6 +160,13 @@ async def test_board_screen_columns_cards_and_filter(server_for):
     assert all(not c["tasks"] for c in annas.structured_content["columns"])
 
 
+async def test_an_unknown_board_is_a_plain_error(server_for, fake):
+    async with drawing(server_for()) as client:
+        for tool in ("yougile_app_board", "yougile_app_triage"):
+            with pytest.raises(ToolError, match="no such board: b-nope"):
+                await client.call_tool(tool, {"board": "b-nope"})
+
+
 async def test_form_needs_the_right_to_create(server_for):
     async with drawing(server_for(role="member", deny=["tasks.create"])) as client:
         names = {t.name for t in await client.list_tools()}

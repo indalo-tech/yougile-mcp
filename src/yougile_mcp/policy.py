@@ -34,11 +34,16 @@ class PolicyError(PermissionError):
 
 
 def action_names(op: Operation, body: dict[str, Any] | None) -> list[str]:
-    """``tasks.update`` with ``deleted: true`` is also the action ``tasks.delete``."""
+    """``tasks.update`` with ``deleted: true`` is also the action ``tasks.delete``; any removal
+    (``users.remove``, ``projects.delete_role``) is also ``<tool>.delete``."""
     names = [op.full_name]
     if op.name.startswith("update") and isinstance(body, dict) and body.get("deleted") is True:
         names.append(f"{op.tool}.{op.name.replace('update', 'delete', 1)}")
-    return names
+    # Every removal is also "<tool>.delete", so a rule like "*.delete" covers users.remove,
+    # projects.delete_role and soft-deleted messages too.
+    if any(n.split(".", 1)[1].startswith(("delete", "remove")) for n in names):
+        names.append(f"{op.tool}.delete")
+    return list(dict.fromkeys(names))
 
 
 @dataclass
@@ -233,13 +238,19 @@ async def _scope(
                 projects=_known(await directory.project_of_column(cid)) if cid else None,
                 item_project=_task_project,
             )
-        if name == "create":
-            return _Scope(projects=_known(await directory.project_of_column(body.get("columnId"))))
         if name == "get":
             return _Scope(result_project=_task_project)  # checked on the fetched task, no prefetch
-        ids = [await _fetch_task_project(pv["id"], client, directory)]
-        if body.get("columnId"):
-            ids.append(await directory.project_of_column(body["columnId"]))
+        if name == "create":
+            ids = [await directory.project_of_column(body.get("columnId"))]
+        else:
+            ids = [await _fetch_task_project(pv["id"], client, directory)]
+            if body.get("columnId"):
+                ids.append(await directory.project_of_column(body["columnId"]))
+        # Subtasks are tasks too: linking one from another project would reach into it.
+        subtasks = body.get("subtasks")
+        if isinstance(subtasks, list):
+            for sub in subtasks:
+                ids.append(await _fetch_task_project(str(sub), client, directory) if sub else None)
         return _Scope(projects=_known(*ids))
     if tool == "chats" and "chatId" in pv:
         try:

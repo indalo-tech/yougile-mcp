@@ -56,6 +56,19 @@ async def test_429_penalizes_and_retries():
     assert limiter.acquired == 2
 
 
+@pytest.mark.parametrize(
+    ("header", "pause"), [("3600", 60.0), ("0", 1.0), ("inf", 10.0), ("nan", 10.0), ("soon", 10.0)]
+)
+async def test_retry_after_is_kept_within_a_minute(header, pause):
+    responses = iter(
+        [httpx2.Response(429, headers={"Retry-After": header}), httpx2.Response(200, json=[])]
+    )
+    limiter = RecordingLimiter()
+    async with make(lambda r: next(responses), limiter=limiter) as c:
+        await c.request("GET", "/tasks")
+    assert limiter.penalties == [pause]
+
+
 async def test_post_without_idempotency_key_is_not_retried_on_5xx():
     calls = []
 

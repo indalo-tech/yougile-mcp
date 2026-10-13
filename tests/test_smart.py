@@ -402,3 +402,14 @@ async def test_overview_carries_company_rules(client_for):
     async with client_for(instructions=["Пишите кратко."]) as c:
         data = await call(c, "yougile_overview")
     assert data["company_rules"] == "Пишите кратко."
+
+
+async def test_a_broken_workflow_chain_is_skipped(client_for, fake, caplog):
+    chain = {"Разработка / Сайт": ["Очередь", "Переименована", "Готово"]}
+    async with client_for(workflows=chain, board="Сайт", project="Разработка") as c:
+        # as if no chain were set: the column is asked for, not "Переименована not found"
+        with pytest.raises(ToolError, match="column is required"):
+            await call(c, "yougile_create_task", title="x")
+        await call(c, "yougile_create_task", title="x", column="В работе")
+    assert fake.bodies("POST", "/api-v2/tasks")[-1]["columnId"] == "c-int-work"
+    assert "workflow of 'Разработка / Сайт' ignored" in caplog.text

@@ -6,6 +6,7 @@ exactly as for the domain tools.
 
 import copy
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, time, timedelta
 from pathlib import Path
@@ -34,6 +35,8 @@ from .present import (
     text_to_html,
     user_label,
 )
+
+log = logging.getLogger(__name__)
 
 MAX_PAGES = 10  # 10 000 tasks per search is plenty and protects the shared rate limit
 PER_COLUMN_THRESHOLD = 4  # up to this many columns: one filtered request per column
@@ -73,6 +76,15 @@ class Work:
 
     async def structure(self) -> Structure:
         return await self.directory.structure()
+
+    async def structure_with_board(self, board_id: str) -> Structure:
+        """The structure, reloaded once if the board is not in it (maybe just created)."""
+        s = await self.directory.structure()
+        if board_id not in s.boards:
+            s = await self.directory.structure(refresh=True)
+        if board_id not in s.boards:
+            raise ValueError(f"no such board: {board_id}")
+        return s
 
     async def task(self, ref: str) -> dict:
         return await self.caller.call("tasks.get", {"id": ref.strip()})
@@ -132,7 +144,12 @@ class Work:
             except (NotFound, Ambiguous):
                 continue
             if board["id"] == board_id:
-                return [structure.find_column(title, board_id)["id"] for title in chain]
+                try:
+                    return [structure.find_column(title, board_id)["id"] for title in chain]
+                except (NotFound, Ambiguous) as exc:
+                    # A renamed or removed column breaks the chain: work as if none was set.
+                    log.warning("workflow of %r ignored: %s", key, exc)
+                    return None
         return None
 
     async def user_ids(self, refs: list[str]) -> list[str]:

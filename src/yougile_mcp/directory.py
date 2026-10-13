@@ -7,6 +7,7 @@ saves the shared 50 requests/minute budget for real work.
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
@@ -15,8 +16,11 @@ from typing import Any
 from . import progress
 from .client import YouGileClient
 
+log = logging.getLogger(__name__)
+
 DEFAULT_TTL = 300.0
 PAGE = 1000
+MAX_PAGES = 50  # 50 000 objects: past that the server is looping, not paging
 MAX_OPTIONS = 10  # more partial matches than this: ask for a more exact name instead
 
 # What the person picked for ambiguous names during one tool call: choice_key -> object id.
@@ -54,7 +58,7 @@ async def fetch_all(
 ) -> list[dict]:
     items: list[dict] = []
     offset = 0
-    while True:
+    for _ in range(MAX_PAGES):
         page = await client.request(
             "GET", path, query={**(query or {}), "limit": PAGE, "offset": offset}
         )
@@ -64,6 +68,8 @@ async def fetch_all(
         if not paging.get("next") or not content:
             return items
         offset += len(content)
+    log.warning("%s: stopped after %d pages (%d objects)", path, MAX_PAGES, len(items))
+    return items
 
 
 def _norm(text: Any) -> str:
