@@ -64,6 +64,9 @@ async def yougile_app_complete(task: TaskRef, completed: bool) -> dict[str, Any]
     work = _clicked()
     t = await work.task(task)
     await work.caller.call("tasks.update", {"id": t["id"], "completed": completed})
+    from .. import copies
+
+    await copies.follow(work, t, ("column",))  # done decides the client task's column
     return await data.card(work, t["id"])
 
 

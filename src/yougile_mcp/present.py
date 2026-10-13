@@ -6,6 +6,7 @@ import html
 import re
 from collections.abc import Collection
 from datetime import date, datetime, time
+from html.parser import HTMLParser
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -86,11 +87,76 @@ def is_html(text: str) -> bool:
     return bool(_HTML_TAG.search(text))
 
 
+ALLOWED_TAGS = {
+    "p", "br", "b", "i", "u", "s", "ul", "ol", "li", "a", "strong", "em", "div", "span",
+    "h1", "h2", "h3", "h4", "h5", "h6", "pre", "code",
+}  # fmt: skip
+BLOCK_TAGS = {"p", "ul", "ol", "li", "div", "h1", "h2", "h3", "h4", "h5", "h6", "pre"}
+SAFE_URL = re.compile(r"^(https?:|mailto:)", re.I)
+SAFE_STYLE = re.compile(r"^[^<>]*$")  # YouGile's own colours and sizes; no markup inside
+
+
+class _Sanitizer(HTMLParser):
+    """Keeps the formatting tags YouGile uses and escapes everything else: a stray
+    «<script>», an «onclick», a «javascript:» link, an unknown tag. Newlines in text outside
+    blocks become <br>, as in plain text."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.out: list[str] = []
+        self.pre = 0
+        self.blocks = 0
+
+    def _attrs(self, tag: str, attrs: list[tuple[str, str | None]]) -> str:
+        kept = []
+        for name, value in attrs:
+            name, value = name.lower(), (value or "").strip()
+            link = name == "href" and tag == "a" and SAFE_URL.match(value)
+            plain = name in ("class", "target", "rel") or name.startswith("data-")
+            style = name == "style" and SAFE_STYLE.match(value) and "url(" not in value.lower()
+            if link or plain or style:
+                kept.append((name, value))
+        return "".join(f' {n}="{html.escape(v, quote=True)}"' for n, v in kept)
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag not in ALLOWED_TAGS:
+            self.out.append(html.escape(self.get_starttag_text() or "", quote=False))
+            return
+        self.pre += tag == "pre"
+        self.blocks += tag in BLOCK_TAGS
+        self.out.append(f"<{tag}{self._attrs(tag, attrs)}>")
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag not in ALLOWED_TAGS:
+            self.out.append(html.escape(self.get_starttag_text() or "", quote=False))
+            return
+        self.out.append(f"<{tag}{self._attrs(tag, attrs)}>" if tag != "br" else "<br>")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag not in ALLOWED_TAGS:
+            self.out.append(html.escape(f"</{tag}>", quote=False))
+            return
+        self.pre -= tag == "pre" and self.pre > 0
+        self.blocks -= tag in BLOCK_TAGS and self.blocks > 0
+        self.out.append(f"</{tag}>")
+
+    def handle_data(self, data: str) -> None:
+        text = html.escape(data, quote=False)
+        if not self.pre:
+            text = text.replace("\n", "<br>") if not self.blocks else text.replace("\n", " ")
+        self.out.append(text)
+
+
 def text_to_html(text: str) -> str:
-    """Plain text (with newlines) -> YouGile HTML; text that already is HTML passes as is."""
-    if is_html(text):
-        return text
-    return html.escape(text, quote=False).replace("\n", "<br>")
+    """Text for YouGile (a description, a chat message) as safe HTML. Plain text is escaped
+    with its newlines kept; formatting tags (<b>, <p>, links…) are kept and everything else
+    is escaped — one tag no longer lets the rest through raw."""
+    if not is_html(text):
+        return html.escape(text, quote=False).replace("\n", "<br>")
+    parser = _Sanitizer()
+    parser.feed(text)
+    parser.close()
+    return "".join(parser.out)
 
 
 def html_to_text(value: str | None) -> str:

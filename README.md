@@ -211,8 +211,11 @@ claude mcp add yougile --scope user -e YOUGILE_API_KEY=ваш_ключ -- uvx "y
 ### Настройки репозитория и пользователя
 
 Сервер ищет `.yougile.json` вверх от текущей папки (обычно это корень репозитория) и общий
-файл `~/.yougile-mcp.json`. Настройки репозитория перекрывают общие. Путь к файлу можно задать
-явно через `YOUGILE_CONFIG`.
+файл `~/.yougile-mcp.json`. Настройки репозитория перекрывают общие, но права (`role`,
+`projects`, `deny`, `confirm_projects`) могут только сужать: роль не выше общей, проекты — из
+разрешённых общим файлом, запреты и подтверждения добавляются. Так чужой склонированный
+репозиторий не расширит ваши права. Файл, заданный явно через `YOUGILE_CONFIG`, действует
+целиком.
 
 ```json
 {
@@ -268,6 +271,7 @@ claude mcp add yougile --scope user -e YOUGILE_API_KEY=ваш_ключ -- uvx "y
 | `YOUGILE_API_KEY` | — | ключ API, обязателен для работы сервера |
 | `YOUGILE_BASE_URL` | `https://ru.yougile.com` | адрес YouGile, например вашего коробочного сервера |
 | `YOUGILE_RATE_LIMIT` | `45` | запросов в минуту на один ключ; `0` отключает ограничитель |
+| `YOUGILE_HTTP_LOCAL_FILES` | — | `1` разрешает в режиме `--transport http` загружать файлы по пути на этом компьютере (по умолчанию — только `content_base64`: к порту может обратиться кто угодно на машине) |
 | `YOUGILE_TIMEZONE` | `Europe/Moscow` | часовой пояс компании, перекрывает `timezone` из файла |
 | `YOUGILE_CONFIG` | — | явный путь к файлу настроек вместо поиска `.yougile.json` |
 | `YOUGILE_MCP_STATE_DIR` | папка кэша ОС | где лежит общий счётчик лимита |
@@ -540,7 +544,10 @@ details or personal data.
 
 The server looks for `.yougile.json` in the current directory and its parents (usually the
 repository root), and for a shared `~/.yougile-mcp.json`. Repository settings override the
-shared ones. `YOUGILE_CONFIG` points to a file explicitly.
+shared ones, but rights (`role`, `projects`, `deny`, `confirm_projects`) only narrow: the role
+is no higher than the shared one, projects come from those the shared file allows, denials and
+confirmations add up — so a cloned repository cannot widen your rights. A file named
+explicitly in `YOUGILE_CONFIG` applies in full.
 
 ```json
 {
@@ -594,6 +601,7 @@ error listing the options, so the model asks the user.
 | `YOUGILE_API_KEY` | — | API key, required to run the server |
 | `YOUGILE_BASE_URL` | `https://ru.yougile.com` | YouGile address, e.g. your on-premise server |
 | `YOUGILE_RATE_LIMIT` | `45` | requests per minute per key; `0` disables the limiter |
+| `YOUGILE_HTTP_LOCAL_FILES` | — | `1` lets `--transport http` upload files by a path on this computer (by default only `content_base64`: anyone on the machine can reach the port) |
 | `YOUGILE_TIMEZONE` | `Europe/Moscow` | company time zone, overrides `timezone` from the file |
 | `YOUGILE_CONFIG` | — | explicit config file instead of looking for `.yougile.json` |
 | `YOUGILE_MCP_STATE_DIR` | OS cache dir | where the shared rate-limit counter lives |

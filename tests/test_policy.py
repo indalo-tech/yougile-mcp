@@ -96,3 +96,11 @@ async def test_a_tasks_log_is_scoped_by_the_tasks_project(make_runtime):
     await guard(rt, "tasks.get_log", {"id": "t-int"})
     with pytest.raises(PolicyError, match="outside the projects"):
         await guard(rt, "tasks.get_log", {"id": "t-cli"})
+
+
+async def test_an_unknown_chat_is_refused_not_taken_for_a_group_chat(make_runtime):
+    rt = make_runtime(projects=["Разработка"])
+    await guard(rt, "chats.list_messages", {"chatId": "t-int"})  # a task's chat, allowed
+    await guard(rt, "chats.list_messages", {"chatId": "gc-team"})  # a group chat: company-level
+    with pytest.raises(PolicyError, match="no such task or group chat"):
+        await guard(rt, "chats.list_messages", {"chatId": "nope"})

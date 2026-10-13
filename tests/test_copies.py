@@ -262,3 +262,69 @@ async def test_a_new_client_task_needs_its_text(client_for):
     async with client_for(**COPIES) as c:
         with pytest.raises(ToolError, match="needs title and description"):
             await call(c, "yougile_client_copy", task="ID-1")
+
+
+# ---------------- review: archived cards, completion, one board ----------------
+
+
+async def test_archived_cards_do_not_hold_the_client_task(make_runtime, fake):
+    from yougile_mcp import copies, smart
+
+    runtime.set_default(make_runtime(**COPIES))
+    try:
+        fake.tasks["t-int"]["description"] = "Карточка для клиента: ID-2"
+        fake.tasks["t-arch"] = {
+            "id": "t-arch",
+            "title": "Брошенная",
+            "columnId": "c-int-work",
+            "idTaskCommon": "ID-8",
+            "archived": True,
+            "description": "Карточка для клиента: ID-2",
+        }
+        work = smart.Work(None)
+        group = await copies.linked_cards(work, await work.structure(), fake.tasks["t-int"], "ID-2")
+    finally:
+        runtime.set_default(None)
+    assert [t["id"] for t in group] == ["t-int"]
+
+
+async def test_completing_a_linked_card_syncs_its_client_task(client_for, fake, monkeypatch):
+    from yougile_mcp import copies
+
+    seen = []
+
+    async def follow(_work, task, what):
+        seen.append((task["id"], what))
+        return {}
+
+    monkeypatch.setattr(copies, "follow", follow)
+    fake.tasks["t-int"]["description"] = "Карточка для клиента: ID-2"
+    async with client_for(**COPIES) as c:
+        await call(c, "yougile_update_task", task="ID-1", completed=True)
+    assert seen == [("t-int", ("column",))]
+
+
+async def test_a_client_task_follows_cards_of_one_board(client_for, fake, monkeypatch):
+    import conftest
+
+    monkeypatch.setattr(
+        conftest,
+        "BOARDS",
+        [*conftest.BOARDS, {"id": "b-bot", "title": "Бот", "projectId": "p-int"}],
+    )
+    monkeypatch.setattr(
+        conftest,
+        "COLUMNS",
+        [*conftest.COLUMNS, {"id": "c-bot-work", "title": "В работе", "boardId": "b-bot"}],
+    )
+    fake.tasks["t-int"]["description"] = "Карточка для клиента: ID-2"
+    fake.tasks["t-bot"] = {
+        "id": "t-bot",
+        "title": "Бот",
+        "columnId": "c-bot-work",
+        "idTaskCommon": "ID-9",
+    }
+    async with client_for(**COPIES) as c:
+        with pytest.raises(ToolError, match="follows the cards of one internal board"):
+            await call(c, "yougile_client_copy", task="ID-9", client_task="ID-2")
+    assert "Карточка для клиента" not in (fake.tasks["t-bot"].get("description") or "")

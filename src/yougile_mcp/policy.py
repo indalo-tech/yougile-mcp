@@ -247,9 +247,17 @@ async def _scope(
                 projects=_known(await _fetch_task_project(pv["chatId"], client, directory))
             )
         except YouGileError as exc:
+            if exc.status not in (400, 404):
+                raise
+        # Not a task: a group chat, which is company-level — if there is one. An unknown id is
+        # refused rather than treated as company-level (that would let restricted reads pass).
+        try:
+            await client.request("GET", f"/group-chats/{quote(pv['chatId'], safe='')}")
+        except YouGileError as exc:
             if exc.status in (400, 404):
-                return _Scope()  # not a task: a group chat, which is company-level
+                raise PolicyError(f"{op.full_name}: no such task or group chat") from exc
             raise
+        return _Scope()
     if tool == "crm" and name == "create_contact_person":
         return _Scope(projects=_known(body.get("projectId")))
     return _Scope()

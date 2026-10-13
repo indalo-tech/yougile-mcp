@@ -5,6 +5,7 @@ exactly as for the domain tools.
 """
 
 import copy
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, time, timedelta
 from pathlib import Path
@@ -65,6 +66,10 @@ class Work:
         self.cfg = self.rt.config
         self.tz = self.cfg.tz
         self.directory = self.rt.directory
+        # Task listings of this call, by query: a screen asks for the same list twice (done
+        # and open work); any write in the call forgets them, so nothing stale is read back.
+        self._listings: dict[str, tuple[list[dict], bool]] = {}
+        self.caller.on_write.append(self._listings.clear)
 
     async def structure(self) -> Structure:
         return await self.directory.structure()
@@ -141,6 +146,15 @@ class Work:
         return body
 
     async def list_tasks(self, query: dict[str, Any]) -> tuple[list[dict], bool]:
+        key = json.dumps(query, sort_keys=True, default=str)
+        if key in self._listings:
+            tasks, cut = self._listings[key]
+            return list(tasks), cut
+        tasks, cut = await self._list_tasks(query)
+        self._listings[key] = (tasks, cut)
+        return list(tasks), cut
+
+    async def _list_tasks(self, query: dict[str, Any]) -> tuple[list[dict], bool]:
         tasks: list[dict] = []
         for page_no in range(MAX_PAGES):
             page = await self.caller.call(
@@ -689,7 +703,14 @@ async def yougile_update_task(
         raise ValueError("nothing to change: pass at least one field")
     await work.caller.call("tasks.update", {"id": t["id"], **body})
     follows = tuple(
-        name for name, key in (("hours", "timeTracking"), ("deadline", "deadline")) if key in body
+        name
+        for name, keys in (
+            ("hours", ("timeTracking",)),
+            ("deadline", ("deadline",)),
+            # done or archived decides the client task's column (the least advanced open card)
+            ("column", ("completed", "archived", "columnId")),
+        )
+        if any(k in body for k in keys)
     )
     return {
         "task": work.number(t),
