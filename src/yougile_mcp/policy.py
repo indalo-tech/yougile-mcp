@@ -37,11 +37,14 @@ def action_names(op: Operation, body: dict[str, Any] | None) -> list[str]:
     """``tasks.update`` with ``deleted: true`` is also the action ``tasks.delete``; any removal
     (``users.remove``, ``projects.delete_role``) is also ``<tool>.delete``."""
     names = [op.full_name]
-    if op.name.startswith("update") and isinstance(body, dict) and body.get("deleted") is True:
+    soft_delete = (
+        op.name.startswith("update") and isinstance(body, dict) and body.get("deleted") is True
+    )
+    if soft_delete:
         names.append(f"{op.tool}.{op.name.replace('update', 'delete', 1)}")
     # Every removal is also "<tool>.delete", so a rule like "*.delete" covers users.remove,
     # projects.delete_role and soft-deleted messages too.
-    if any(n.split(".", 1)[1].startswith(("delete", "remove")) for n in names):
+    if op.tool and (soft_delete or op.name.startswith(("delete", "remove"))):
         names.append(f"{op.tool}.delete")
     return list(dict.fromkeys(names))
 
