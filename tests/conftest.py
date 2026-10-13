@@ -105,6 +105,7 @@ class FakeYouGile:
         self.tasks = copy.deepcopy(TASKS)
         self.messages = copy.deepcopy(MESSAGES)
         self.uploads: list[str] = []
+        self.logs: dict[str, list[dict]] = {}  # task id -> its log, newest first
 
     def body(self, index: int = -1) -> Any:
         return json.loads(self.requests[index].content or b"null")
@@ -158,6 +159,11 @@ class FakeYouGile:
                     and (not assignee or assignee in (t.get("assigned") or []))
                 ]
                 return ok(page(items))
+            if parts[0] == "tasks" and len(parts) == 3 and parts[2] == "log":
+                task = self.find_task(parts[1])
+                if task is None:
+                    return ok({"error": "Not found"}, 404)
+                return ok(page(self.logs.get(task["id"], [])))
             if parts[0] == "tasks" and len(parts) == 2:
                 task = self.find_task(parts[1])
                 return ok(task) if task else ok({"error": "Not found"}, 404)

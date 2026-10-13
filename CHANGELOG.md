@@ -5,6 +5,40 @@
 
 ## [Unreleased]
 
+## [0.20.0] — 2026-10-13
+
+### Русский
+
+#### Добавлено
+- История задачи в отчётах. Карточки, перенесённые в колонку «готово» без отметки о выполнении,
+  раньше не имели даты и выпадали из периодов. Теперь дату даёт история задачи (когда карточку
+  туда перенесли, или когда её создали прямо там): `yougile_find_tasks` с `completed_since`/
+  `completed_until`, стендап и отчёт по часам учитывают их, с пометкой `date_from_history`.
+- Стендап показывает, что сдвинулось по колонкам с прошлого рабочего дня («Очередь → В работе»),
+  по истории задач в работе (экран и текст: раздел «Сдвинулось»).
+- Историю читают бережно к общему лимиту YouGile: не больше 20 задач за вызов (сначала новые;
+  созданные после периода не читаются), 10 — для «Сдвинулось». Что не прочитано, указано в
+  `history_unchecked`.
+
+#### Изменено
+- Сценарии `standup` и `hours_report` опираются на эти даты вместо блока «дата неизвестна».
+
+### English
+
+#### Added
+- Task history in reports. Cards put into a done column without being marked completed had no
+  date and fell out of periods. Their task's history now dates them (when the card came there,
+  or when it was created right there): `yougile_find_tasks` with `completed_since`/
+  `completed_until`, the stand-up and the hours report count them, marked `date_from_history`.
+- The stand-up shows what moved between columns since the previous working day ("Очередь →
+  В работе"), from the history of tasks in progress (screen and text: a «Сдвинулось» section).
+- History is read with the company's shared limit in mind: at most 20 tasks per call (newest
+  first; cards created after the period are not read), 10 for what moved. What was not read is
+  reported as `history_unchecked`.
+
+#### Changed
+- The `standup` and `hours_report` prompts rely on these dates instead of a "date unknown" block.
+
 ## [0.19.0] — 2026-10-13
 
 ### Русский
@@ -723,7 +757,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.18.1...v0.19.0
 [0.18.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.17.0...v0.18.0

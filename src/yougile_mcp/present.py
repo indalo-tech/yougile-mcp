@@ -136,7 +136,10 @@ def task_summary(
     if task.get("completed") and task.get("completedTimestamp"):
         out["completed_at"] = format_ms(task["completedTimestamp"], tz)
     elif out["status"] == "completed":
-        out["done_by_column"] = True  # in a done column, not marked: YouGile has no date for it
+        out["done_by_column"] = True  # in a done column, not marked: the task has no date
+        if task.get("historyDoneAt"):  # the task's log tells when it came there
+            out["completed_at"] = format_ms(task["historyDoneAt"], tz)
+            out["date_from_history"] = True
     if task.get("idTaskProject"):
         out["project_number"] = task["idTaskProject"]
     if task.get("assigned"):

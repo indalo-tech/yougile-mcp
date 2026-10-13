@@ -36,6 +36,7 @@ from prefab_ui.components.control_flow import Else, If
 from prefab_ui.rx import RESULT
 from pydantic import Field
 
+from .. import history
 from ..caller import tool_errors
 from ..present import format_ms, parse_when, today, user_label
 from ..smart import Found, Work, search_tasks
@@ -132,6 +133,8 @@ async def state(
             "plan": _h(total_plan),
             "work": _h(total_work),
             "delta": f"{total_work - total_plan:+.1f}",
+            # cards in a done column without a completion date, dated by their log
+            "dated_by_history": sum(1 for t in done.tasks if t.get(history.DONE_AT)),
         },
         "by_person": _bars(by_person),
         "by_project": _bars(by_project),
@@ -140,6 +143,7 @@ async def state(
         "logged": logged,
         "counts": {"over": len(over), "no_plan": len(no_plan), "logged": len(logged)},
         "truncated": done.truncated or opened.truncated,
+        "history": done.history,
     }
 
 
@@ -154,6 +158,7 @@ def for_model(s: dict[str, Any]) -> dict[str, Any]:
         "completed_without_plan": s["no_plan"],
         "open_with_logged_hours": s["logged"],
         **({"truncated": True} if s["truncated"] else {}),
+        **s["history"],
     }
 
 

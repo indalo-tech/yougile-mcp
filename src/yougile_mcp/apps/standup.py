@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, time
 from typing import Annotated, Any
 
 from fastmcp import Context, FastMCP
@@ -26,6 +26,7 @@ from prefab_ui.components.control_flow import Else, ForEach, If
 from prefab_ui.rx import RESULT
 from pydantic import Field
 
+from .. import history
 from ..caller import tool_errors
 from ..directory import _norm
 from ..present import format_ms, is_overdue, today, user_label
@@ -33,6 +34,7 @@ from ..prompts import previous_workday
 from ..smart import Found, Work, search_tasks
 from .screens import add_screens, display_toggle, on_error, screen
 
+MOVED_LOOKUPS = 10  # logs of tasks in progress read for «what moved»: each is a request
 # Columns whose tasks count as "in progress" rather than waiting in the queue.
 IN_PROGRESS_WORDS = ("работ", "провер", "progress", "review", "тест", "test", "doing")
 
@@ -70,7 +72,10 @@ async def state(work: Work, person: str = "me", project: str | None = None) -> d
     opened = await search_tasks(work, assignee=user["id"], project=project)
     now = datetime.now(work.tz)
     doing, queue, overdue, no_deadline = [], [], [], []
+    doing_tasks: list[dict] = []
     for t in opened.tasks:
+        if _in_progress(opened, t):
+            doing_tasks.append(t)
         late = is_overdue(t, work.tz, now, opened.done_ids)
         deadline = (t.get("deadline") or {}).get("deadline")
         extra = f"срок {format_ms(deadline, work.tz, False)}" if deadline else ""
@@ -81,15 +86,35 @@ async def state(work: Work, person: str = "me", project: str | None = None) -> d
         elif _in_progress(opened, t) and not deadline:
             no_deadline.append(_line(opened, t, "в работе без срока"))
     finished = [
-        _line(done, t, f"выполнена {format_ms(t.get('completedTimestamp'), work.tz)}")
+        _line(
+            done,
+            t,
+            f"выполнена {format_ms(history.done_at(t), work.tz)}"
+            + (" (по истории)" if t.get(history.DONE_AT) else ""),
+        )
         for t in done.tasks
+    ]
+    # What moved forward since then without being done yet: the tasks' logs tell.
+    lookups = history.Lookups(budget=MOVED_LOOKUPS)
+    start = int(datetime.combine(since, time.min, tzinfo=work.tz).timestamp() * 1000)
+    columns = opened.structure.columns
+    moved = [
+        _line(
+            opened,
+            t,
+            f"{columns.get(e.get('from') or '', {}).get('title') or '?'} → "
+            f"{columns.get(e.get('to') or '', {}).get('title') or '?'}, "
+            f"{format_ms(e.get('timestamp'), work.tz)}",
+        )
+        for t, e in await history.moves_since(work, doing_tasks, start, lookups)
     ]
     blockers = overdue + no_deadline
     name = user_label(user, "?")
     text = (
         f"**Стендап — {name}, {today(work.tz):%d.%m.%Y}**\n\n"
         f"**Вчера:**\n{_md(finished)}\n\n"
-        f"**Сегодня:**\n{_md(doing)}\n\n"
+        + (f"**Сдвинулось:**\n{_md(moved)}\n\n" if moved else "")
+        + f"**Сегодня:**\n{_md(doing)}\n\n"
         f"**Блокеры и риски:**\n{_md(blockers)}"
     )
     return {
@@ -99,16 +124,19 @@ async def state(work: Work, person: str = "me", project: str | None = None) -> d
         "since": f"{since:%d.%m.%Y}",
         "counts": {
             "done": len(finished),
+            "moved": len(moved),
             "doing": len(doing),
             "queue": len(queue),
             "overdue": len(overdue),
             "blockers": len(blockers),
         },
         "done": finished,
+        "moved": moved,
         "doing": doing,
         "queue": queue,
         "blockers": blockers,
         "text": text,
+        "history": {**done.history, **history.note(lookups)},
     }
 
 
@@ -117,7 +145,9 @@ def for_model(s: dict[str, Any]) -> dict[str, Any]:
         "person": s["name"],
         "done_since": s["since"],
         **{k: [f"{i['code']} {i['title']}" for i in s[k]] for k in ("done", "doing", "queue")},
+        "moved": [f"{i['code']} {i['title']} ({i['extra']})" for i in s["moved"]],
         "blockers": [f"{i['code']} {i['title']} ({i['extra']})" for i in s["blockers"]],
+        **s["history"],
     }
 
 
@@ -153,6 +183,7 @@ def view() -> Column:
             Metric(label="Просрочено", value="{{ standup.counts.overdue }}")
         with Grid(min_column_width="18rem", gap=3):
             section("Вчера", "done")
+            section("Сдвинулось", "moved")
             section("Сегодня — в работе", "doing")
             section("Блокеры и риски", "blockers")
             section("Дальше по очереди", "queue")
