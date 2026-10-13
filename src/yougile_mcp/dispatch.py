@@ -9,7 +9,7 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 from .catalog import Operation, Param
 from .client import YouGileClient
@@ -89,9 +89,19 @@ def prepare(
 
     path = op.path
     for name, value in path_values.items():
+        _check_path_value(op, name, value)
         path = path.replace("{" + name + "}", quote(value, safe=""))
     has_body = op.body_schema is not None
     return Prepared(op, path, path_values, query, body if has_body else None)
+
+
+def _check_path_value(op: Operation, name: str, value: str) -> None:
+    """A path parameter names one object. «.» and «..» are left as they are by quoting and
+    then normalised away by the URL, so the request would reach another resource than the
+    one the permissions were checked for (a slash is quoted, so it stays inside the id)."""
+    decoded = unquote(value)
+    if decoded.strip() in (".", ".."):
+        raise ParamError(f"{op.full_name}: {name} is not a valid id: {value!r}")
 
 
 def _prepare_upload(

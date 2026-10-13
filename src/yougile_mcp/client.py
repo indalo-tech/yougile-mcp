@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from typing import Any
 
@@ -25,6 +26,11 @@ class YouGileError(Exception):
         self.status = status
         self.message = message
         self.payload = payload
+
+
+def _loggable(path: str) -> str:
+    """The path for the log: API keys are part of /auth/keys/{key}, they never go there."""
+    return re.sub(r"(/auth/keys/)[^/?#]+", r"\1***", path)
 
 
 def normalize_base_url(url: str) -> str:
@@ -124,7 +130,7 @@ class YouGileClient:
             except httpx2.TransportError as exc:
                 # A connect error means nothing reached the server, so any method may retry.
                 retryable = idempotent or isinstance(exc, httpx2.ConnectError)
-                log.warning("%s %s failed: %s (attempt %d)", method, path, exc, attempt)
+                log.warning("%s %s failed: %s (attempt %d)", method, _loggable(path), exc, attempt)
                 if retryable and not last:
                     await asyncio.sleep(BACKOFF[min(attempt - 1, len(BACKOFF) - 1)])
                     continue
@@ -135,7 +141,7 @@ class YouGileClient:
             log.info(
                 "%s %s -> %d (%.0f ms)",
                 method,
-                path,
+                _loggable(path),
                 resp.status_code,
                 (time.monotonic() - started) * 1000,
             )

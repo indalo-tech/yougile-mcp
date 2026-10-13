@@ -21,7 +21,7 @@ MCP-сервер, через который Claude и другие AI-ассис
 
 - **Работа с задачами по-человечески.** Названия досок и колонок, имена исполнителей, номера
   задач и даты вместо UUID и меток времени. Перенос карточки сам проходит цепочку Workflow.
-- **Весь API.** 65 операций в 10 доменных инструментах плюс справочный `yougile_help`.
+- **Весь API.** 66 операций в 10 доменных инструментах плюс справочный `yougile_help`.
 - **Задачи по номеру.** Сквозной `ID-123` или проектный `DEV-12`.
 - **Готовые сценарии.** Стендап, отчёт по часам, разбор очереди — одной командой.
 - **Общий лимит запросов.** YouGile пропускает 50 запросов в минуту на всю компанию, включая
@@ -347,7 +347,7 @@ tasks, boards, columns, chats, employees and stickers, on top of the official RE
 
 - **Task work in human terms.** Board and column names, assignee names, task numbers and
   dates instead of UUIDs and timestamps. Moving a card walks the Workflow chain by itself.
-- **The whole API.** 65 operations in 10 domain tools, plus the `yougile_help` reference tool.
+- **The whole API.** 66 operations in 10 domain tools, plus the `yougile_help` reference tool.
 - **Tasks by number.** The company-wide `ID-123` or the project one like `DEV-12`.
 - **Ready-made scenarios.** Stand-up, hours report, queue triage — one command each.
 - **A shared rate limit.** YouGile allows 50 requests per minute per company, people in the

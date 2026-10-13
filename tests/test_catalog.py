@@ -20,7 +20,7 @@ def test_tools_and_names_are_consistent():
     assert all(grouped[t] for t in TOOLS), "every tool has operations"
     names = [(op.tool, op.name) for op in operations().values() if op.tool]
     assert len(names) == len(set(names))
-    assert sum(len(ops) for ops in grouped.values()) == 65
+    assert sum(len(ops) for ops in grouped.values()) == 66
 
 
 def test_auth_endpoints_are_not_exposed():

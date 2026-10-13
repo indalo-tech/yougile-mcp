@@ -12,6 +12,7 @@ import copy
 from collections.abc import Sequence
 from typing import Any
 
+from fastmcp.exceptions import ToolError
 from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 from fastmcp.tools import Tool
 
@@ -123,7 +124,20 @@ def visible_tools(tools: Sequence[Tool], policy: Policy, copies: bool = False) -
 
 class ToolVisibility(Middleware):
     """Filters tool listings by the permissions of the runtime bound for the request, and by
-    whether the client draws screens."""
+    whether the client draws screens; refuses screens' buttons to clients that draw none."""
+
+    async def on_call_tool(
+        self, context: MiddlewareContext[Any], call_next: CallNext[Any, Any]
+    ) -> Any:
+        # Hiding a tool from the list does not stop a call by name: a screen's button (they
+        # write without asking, the person pressed it) must not be a tool any model can call.
+        name = getattr(context.message, "name", "")
+        if name in apps.ACTIONS and not apps.client_draws(context.fastmcp_context):
+            raise ToolError(
+                f"{name} is a button of a screen, for clients that show screens; use the "
+                "regular yougile_* tools instead"
+            )
+        return await call_next(context)
 
     async def on_list_tools(
         self, context: MiddlewareContext[Any], call_next: CallNext[Any, Sequence[Tool]]

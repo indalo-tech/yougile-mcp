@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import pytest
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
@@ -130,6 +132,41 @@ async def test_create_task_with_its_client_copy(client_for, fake):
     assert linked(fake.tasks["t-new"]) == "ID-100"
 
 
+async def test_confirmation_is_asked_before_the_internal_task_is_made(client_for, fake):
+    # Asking after the internal task would make it again on the repeat with confirm=true.
+    before = set(fake.tasks)
+    args = {
+        "title": "TD-91 доработка",
+        "board": "Разработка / Сайт",
+        "column": "Очередь",
+        "client_title": "Новая возможность",
+        "client_description": "Для клиента",
+    }
+    async with client_for(**COPIES, confirm_projects=["Клиенты"]) as c:
+        with pytest.raises(ToolError, match="confirmation_required"):
+            await c.call_tool("yougile_create_task", args)
+        assert set(fake.tasks) == before, "nothing written before the answer"
+        result = await call(c, "yougile_create_task", **args, confirm=True)
+    made = set(fake.tasks) - before
+    assert len(made) == 2, "one internal task and its client copy, once"
+    assert result["client_copy"]["created"] is True
+
+
+async def test_a_link_line_to_an_internal_task_is_not_followed(client_for, fake):
+    # The link line is text anyone can edit: ID-3 is another internal task, not a client one.
+    fake.tasks["t-int"]["description"] = "План.\n\nКарточка для клиента: ID-3"
+    untouched = dict(fake.tasks["t-done"])
+    async with client_for(**COPIES) as c:
+        logged = await call(c, "yougile_log_time", task="ID-1", hours=2)
+    assert "is not in «Клиенты»" in logged["client_copy"]["error"]
+    assert fake.tasks["t-done"] == untouched, "the other internal task is left alone"
+
+
+def test_the_last_link_line_counts():
+    task = {"description": "<p>Карточка для клиента: ID-7</p><p>Карточка для клиента: ID-9</p>"}
+    assert linked(task) == "ID-9"
+
+
 async def test_only_tasks_of_the_source_project(client_for):
     async with client_for(**COPIES) as c:
         with pytest.raises(ToolError, match="is not in «Разработка»"):
@@ -137,10 +174,13 @@ async def test_only_tasks_of_the_source_project(client_for):
 
 
 async def test_copies_overview_lists_linked_and_unlinked(client_for):
+    # The fake's cards were done on 28.09: «lately» must reach back that far, whatever today is.
+    lately = (datetime.now(UTC) - datetime(2026, 9, 28, tzinfo=UTC)).days + 7
     async with client_for(**COPIES) as c:
-        before = await call(c, "yougile_client_copies", board="Разработка / Сайт")
+        board = {"board": "Разработка / Сайт", "recent_days": lately}
+        before = await call(c, "yougile_client_copies", **board)
         await call(c, "yougile_client_copy", task="ID-1", **CLIENT_TEXT)
-        after = await call(c, "yougile_client_copies", board="Разработка / Сайт")
+        after = await call(c, "yougile_client_copies", **board)
     # ID-3 is done, but lately: a daily record like it still waits to be tied to a result
     assert [t["number"] for t in before["unlinked"]] == ["ID-1", "ID-3"]
     assert before["unlinked"][1]["done"] is True and before["linked"] == []

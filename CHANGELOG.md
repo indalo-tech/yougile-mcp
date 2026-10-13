@@ -5,6 +5,60 @@
 
 ## [Unreleased]
 
+## [0.19.0] — 2026-10-13
+
+### Русский
+
+#### Добавлено
+- `yougile_tasks` → `get_log`: история изменений задачи (новая операция API YouGile
+  `GET /tasks/{id}/log`). Права проверяются по проекту задачи.
+
+#### Безопасность
+- Кнопки экранов MCP Apps (`yougile_app_*`) отвечают только клиентам, которые показывают
+  экраны. Раньше их скрывали лишь из списка инструментов, а по имени их мог вызвать любой
+  клиент — и записать без подтверждения.
+- Значения `.` и `..` в параметрах пути отклоняются: после нормализации URL запрос ушёл бы не
+  к тому ресурсу, права на который проверялись.
+- Операции с ролями проекта (`projects.get_role`, `update_role`, `delete_role`) проверяются по
+  проекту (`projectId`), а не по id роли: список разрешённых проектов к ним теперь применим, а
+  подтверждение записи в клиентские проекты спрашивается.
+- Ключи API не попадают в лог: путь `/auth/keys/…` пишется как `/auth/keys/***`.
+
+#### Исправлено
+- Подтверждение записи в клиентский проект спрашивается до первой записи вызова.
+  `yougile_create_task` с клиентской копией и прикрепление файлов (`yougile_attach_file`)
+  раньше спрашивали посреди работы: повтор после ответа создавал вторую внутреннюю задачу или
+  загружал файлы заново.
+- Клиентские копии следуют строке связи, только если карточка — во внутреннем проекте, а
+  задача из строки — в клиентском. Опечатка в номере больше не перезаписывает часы, срок и
+  колонку другой внутренней задачи. Читается последняя строка связи.
+
+### English
+
+#### Added
+- `yougile_tasks` → `get_log`: a task's change history (the new YouGile API operation
+  `GET /tasks/{id}/log`). Permissions are checked by the task's project.
+
+#### Security
+- MCP Apps screen buttons (`yougile_app_*`) answer only clients that show screens. They were
+  only hidden from the tool list, so any client could call them by name — and write without a
+  confirmation.
+- `.` and `..` are refused as path parameters: once the URL is normalised, the request would
+  reach another resource than the one the permissions were checked for.
+- Project role operations (`projects.get_role`, `update_role`, `delete_role`) are checked by
+  their project (`projectId`), not by the role's id: the project allowlist applies to them
+  and writes into client projects ask for confirmation.
+- API keys stay out of the log: `/auth/keys/…` is logged as `/auth/keys/***`.
+
+#### Fixed
+- Confirmation of a write into a client project is asked before the call's first write.
+  `yougile_create_task` with a client copy and file attachments (`yougile_attach_file`) used to
+  ask midway, so the repeat after the answer made a second internal task or uploaded the files
+  again.
+- Client copies follow a link line only when the card is in the internal project and the task
+  it names in the client one: a mistyped number no longer overwrites another internal task's
+  hours, deadline and column. The last link line counts.
+
 ## [0.18.1] — 2026-10-11
 
 ### Русский
@@ -669,7 +723,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.18.1...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.18.1...v0.19.0
 [0.18.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.16.0...v0.17.0
