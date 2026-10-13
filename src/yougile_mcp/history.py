@@ -5,12 +5,18 @@ the task API says nothing about when a card moved. The log does: ``move`` events
 columns (``from``, ``to``) and the time; ``add`` is the creation (in the column the card was
 created in). The log keeps a year of events.
 
-Every lookup is one request against the company's shared limit, so a call looks up at most
-MAX_LOOKUPS tasks — the most recently created first — and says how many it left unchecked.
+Every lookup is one request against the company's shared limit, so:
+- a card's arrival date is remembered (ARRIVALS_TTL): it does not change while the card stays
+  in its column, so each log is read once, and later calls only spend on new cards;
+- only cards created within WINDOW_DAYS before the period are looked up: a card created long
+  before and lying in a done column was, as a rule, done long before too;
+- a call reads at most MAX_LOOKUPS logs — the newest cards first — and says how many it left.
 """
 
 from __future__ import annotations
 
+import time
+from collections import OrderedDict
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -24,6 +30,28 @@ if TYPE_CHECKING:
 MAX_LOOKUPS = 20  # task logs one call may read
 LOG_LIMIT = 100  # events per log read: enough for a card's recent moves
 DONE_AT = "historyDoneAt"  # the date found in the log, kept on the task dict
+WINDOW_DAYS = 90  # cards created earlier than this before the period are not looked up
+ARRIVALS_TTL = 24 * 3600.0
+ARRIVALS_MAX = 50_000
+
+# (task id, column id) -> (when remembered, the card's arrival there or None). Only a
+# timestamp, of tasks the caller already got through the policy: safe to share in a process.
+_arrivals: OrderedDict[tuple[str, str], tuple[float, int | None]] = OrderedDict()
+
+
+def _remembered(key: tuple[str, str]) -> tuple[bool, int | None]:
+    hit = _arrivals.get(key)
+    if hit is None or time.monotonic() - hit[0] > ARRIVALS_TTL:
+        return False, None
+    _arrivals.move_to_end(key)
+    return True, hit[1]
+
+
+def _remember(key: tuple[str, str], when: int | None) -> None:
+    _arrivals[key] = (time.monotonic(), when)
+    _arrivals.move_to_end(key)
+    while len(_arrivals) > ARRIVALS_MAX:
+        _arrivals.popitem(last=False)
 
 
 @dataclass
@@ -77,25 +105,42 @@ async def date_done_cards(
     done_columns: Collection[str],
     lookups: Lookups,
     before: int | None = None,
+    after: int | None = None,
 ) -> list[dict]:
     """The tasks, those in a done column without a completion date given the date they came
-    there (DONE_AT) from their log. The newest cards are looked up first; cards created at or
-    after ``before`` (the period's end) cannot have been done in it and are not looked up."""
+    there (DONE_AT) from their log. Looked up: cards created before ``before`` (the period's
+    end: later ones cannot have been done in it) and within WINDOW_DAYS before ``after`` (the
+    period's start), the newest first."""
+    oldest = after - WINDOW_DAYS * 86_400_000 if after is not None else None
     undated = [
         t
         for t in tasks
         if t.get("columnId") in done_columns
         and not (t.get("completed") and t.get("completedTimestamp"))
         and (before is None or (t.get("timestamp") or 0) < before)
+        and (oldest is None or (t.get("timestamp") or 0) >= oldest)
     ]
     if not undated:
         return tasks
     undated.sort(key=lambda t: t.get("timestamp") or 0, reverse=True)
-    await progress.report(f"Смотрю историю задач в колонках «готово»: {len(undated)}")
     found: dict[str, int] = {}
+    unread = []
     for t in undated:
+        known, when = _remembered((t["id"], t.get("columnId") or ""))
+        if known:
+            if when:
+                found[t["id"]] = when
+        else:
+            unread.append(t)
+    if unread:
+        await progress.report(f"Смотрю историю задач в колонках «готово»: {len(unread)}")
+    for t in unread:
         events = await lookups.log(work, t["id"])
-        if events and (when := arrived(events, done_columns, t.get("columnId"))):
+        if events is None:
+            continue  # over the budget: counted as unchecked
+        when = arrived(events, done_columns, t.get("columnId"))
+        _remember((t["id"], t.get("columnId") or ""), when)
+        if when:
             found[t["id"]] = when
     return [{**t, DONE_AT: found[t["id"]]} if t["id"] in found else t for t in tasks]
 
@@ -127,7 +172,8 @@ def note(lookups: Lookups) -> dict[str, Any]:
         return {}
     return {
         "history_unchecked": lookups.unchecked,
-        "history_hint": f"the history of {lookups.unchecked} more card(s) was not read (each is "
-        "a request against the company's limit): narrow the search (a board, a person) to "
-        "date them",
+        "history_hint": f"{lookups.unchecked} card(s) in done columns were not dated yet: each "
+        "history read is a request against the company's shared limit, so a call reads a few "
+        "and remembers them; they get their dates on later calls. Mention the number once; "
+        "do not repeat the call for them",
     }

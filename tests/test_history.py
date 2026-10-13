@@ -89,8 +89,26 @@ async def test_a_limited_number_of_logs_is_read(client_for, fake, monkeypatch):
     async with client_for(**DONE) as c:
         found = await find(c, completed_since="2026-09-28", completed_until="2026-09-29")
     assert [t["number"] for t in found["tasks"] if t.get("date_from_history")] == ["ID-20"]
-    assert found["history_unchecked"] == 2 and "narrow the search" in found["history_hint"]
+    assert found["history_unchecked"] == 2 and "later calls" in found["history_hint"]
     assert sum(fake.calls("GET", f"/api-v2/tasks/t-{n}/log") for n in range(3)) == 1
+
+
+async def test_dates_are_remembered_and_old_cards_left_alone(client_for, fake):
+    card(fake, "t-moved", "ID-10", MSK_2026_09_30 - 5 * DAY)
+    fake.logs["t-moved"] = [move(MSK_2026_09_30 - DAY, "c-int-review", "c-int-done")]
+    card(fake, "t-ancient", "ID-14", MSK_2026_09_30 - 200 * DAY)  # done long ago, as a rule
+    fake.logs["t-ancient"] = [move(MSK_2026_09_30 - DAY, "c-int-review", "c-int-done")]
+    period = {"completed_since": "2026-09-28", "completed_until": "2026-09-29"}
+    async with client_for(**DONE) as c:
+        first = await find(c, **period)
+        again = await find(c, **period)
+    assert (
+        [t["number"] for t in first["tasks"]]
+        == ["ID-10", "ID-3"]
+        == [t["number"] for t in again["tasks"]]
+    )
+    assert fake.calls("GET", "/api-v2/tasks/t-moved/log") == 1, "read once, then remembered"
+    assert fake.calls("GET", "/api-v2/tasks/t-ancient/log") == 0
 
 
 def test_arrived_reads_the_latest_move_into_the_columns():

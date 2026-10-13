@@ -443,7 +443,9 @@ async def search_tasks(
     lookups = history.Lookups()
     if by_period:
         # Cards put into a done column unmarked have no completion date: their log has it.
-        selected = await history.date_done_cards(work, selected, done_ids, lookups, done_before)
+        selected = await history.date_done_cards(
+            work, selected, done_ids, lookups, before=done_before, after=done_from
+        )
         selected = [t for t in selected if _completed_within(t, done_from, done_before)]
         selected.sort(key=lambda t: history.done_at(t) or 0, reverse=True)
     users = await work.directory.users_by_id() if any(t.get("assigned") for t in selected) else {}

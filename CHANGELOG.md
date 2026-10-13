@@ -16,12 +16,16 @@
   `completed_until`, стендап и отчёт по часам учитывают их, с пометкой `date_from_history`.
 - Стендап показывает, что сдвинулось по колонкам с прошлого рабочего дня («Очередь → В работе»),
   по истории задач в работе (экран и текст: раздел «Сдвинулось»).
-- Историю читают бережно к общему лимиту YouGile: не больше 20 задач за вызов (сначала новые;
-  созданные после периода не читаются), 10 — для «Сдвинулось». Что не прочитано, указано в
-  `history_unchecked`.
+- Историю читают бережно к общему лимиту YouGile: найденная дата запоминается на сутки (пока
+  карточка в той же колонке, она не меняется); смотрят только карточки, созданные не раньше чем
+  за 90 дней до периода (старые в «готово», как правило, сделаны давно) и не позже его конца; за
+  вызов — не больше 20 историй, сначала новые карточки, и 10 — для «Сдвинулось». Что осталось
+  без даты, указано в `history_unchecked`: даты появятся при следующих вызовах.
 
 #### Изменено
-- Сценарии `standup` и `hours_report` опираются на эти даты вместо блока «дата неизвестна».
+- Сценарии `standup` и `hours_report` опираются на эти даты вместо блока «дата неизвестна»;
+  карточки, которым история даты не дала (созданы больше чем за 90 дней до периода, перенесены
+  больше года назад), в период не попадают.
 
 ### English
 
@@ -32,12 +36,16 @@
   `completed_until`, the stand-up and the hours report count them, marked `date_from_history`.
 - The stand-up shows what moved between columns since the previous working day ("Очередь →
   В работе"), from the history of tasks in progress (screen and text: a «Сдвинулось» section).
-- History is read with the company's shared limit in mind: at most 20 tasks per call (newest
-  first; cards created after the period are not read), 10 for what moved. What was not read is
-  reported as `history_unchecked`.
+- History is read with the company's shared limit in mind: a date found is remembered for a
+  day (it does not change while the card stays in its column); only cards created no earlier
+  than 90 days before the period (old cards in done columns were, as a rule, done long ago) and
+  before its end are looked up; at most 20 logs per call, newest cards first, and 10 for what
+  moved. What is left undated is reported as `history_unchecked`: later calls date it.
 
 #### Changed
-- The `standup` and `hours_report` prompts rely on these dates instead of a "date unknown" block.
+- The `standup` and `hours_report` prompts rely on these dates instead of a "date unknown"
+  block; cards the history gives no date (created over 90 days before the period, moved over a
+  year ago) are left out of the period.
 
 ## [0.19.0] — 2026-10-13
 

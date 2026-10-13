@@ -225,3 +225,13 @@ def make_runtime(fake: FakeYouGile) -> Callable[..., Runtime]:
         return Runtime(client, cfg, Policy.from_config(cfg), Directory(client))
 
     return build
+
+
+@pytest.fixture(autouse=True)
+def _forget_task_histories():
+    """Arrival dates are remembered per process: each test starts without them."""
+    from yougile_mcp import history
+
+    history._arrivals.clear()
+    yield
+    history._arrivals.clear()

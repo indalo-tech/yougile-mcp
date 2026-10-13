@@ -136,7 +136,8 @@ async def state(work: Work, person: str = "me", project: str | None = None) -> d
         "queue": queue,
         "blockers": blockers,
         "text": text,
-        "history": {**done.history, **history.note(lookups)},
+        # Cards left undated by the «done» search: what moved is a nice-to-have, not counted.
+        "history": done.history,
     }
 
 
