@@ -413,3 +413,10 @@ async def test_a_broken_workflow_chain_is_skipped(client_for, fake, caplog):
         await call(c, "yougile_create_task", title="x", column="В работе")
     assert fake.bodies("POST", "/api-v2/tasks")[-1]["columnId"] == "c-int-work"
     assert "workflow of 'Разработка / Сайт' ignored" in caplog.text
+
+
+async def test_a_default_board_given_by_id_works_and_shows_its_name(client_for, fake):
+    async with client_for(board="b-hub-int") as c:
+        assert (await call(c, "yougile_overview"))["defaults"]["board"] == "Разработка / Сайт"
+        await call(c, "yougile_create_task", title="x", column="Очередь")
+    assert fake.bodies("POST", "/api-v2/tasks")[-1]["columnId"] == "c-int-queue"
