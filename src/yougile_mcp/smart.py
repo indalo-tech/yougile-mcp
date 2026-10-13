@@ -5,7 +5,7 @@ exactly as for the domain tools.
 """
 
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, time, timedelta
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -16,7 +16,7 @@ from fastmcp.tools import Tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from . import progress
+from . import history, progress
 from .caller import TASK_NUMBER, Caller, tool_errors
 from .client import YouGileError
 from .directory import Ambiguous, NotFound, Structure, _norm
@@ -218,8 +218,8 @@ def _period(since: str | None, until: str | None, tz: ZoneInfo) -> tuple[int | N
 
 
 def _completed_within(task: dict, start: int | None, end: int | None) -> bool:
-    done = task.get("completedTimestamp")
-    if not task.get("completed") or not done:
+    done = history.done_at(task)  # the completion date, or the one from the task's log
+    if not done:
         return False
     return (start is None or done >= start) and (end is None or done < end)
 
@@ -316,9 +316,10 @@ async def yougile_find_tasks(
     """Find tasks by project/board/column names, assignee and title words.
     Without a place, searches the workspace's default project if one is set, else the whole
     company. Completed tasks show completed_at; tasks in a column that counts as done but not
-    marked completed show done_by_column: true (YouGile keeps no date for those); open tasks
-    past their deadline show overdue: true. completed_since/completed_until select tasks
-    completed in a period, newest first."""
+    marked completed show done_by_column: true. completed_since/completed_until select tasks
+    completed in a period, newest first — those unmarked cards included, dated by the task's
+    history (date_from_history: true; history_unchecked when some logs were not read). Open
+    tasks past their deadline show overdue: true."""
     found = await search_tasks(
         Work(ctx),
         text=text,
@@ -345,6 +346,7 @@ class Found:
     done_ids: frozenset[str]
     tz: ZoneInfo
     truncated: bool = False
+    history: dict[str, Any] = field(default_factory=dict)  # cards whose log went unread
 
     def summaries(self, limit: int) -> list[dict[str, Any]]:
         now = datetime.now(self.tz)
@@ -360,6 +362,7 @@ class Found:
             "tasks": self.summaries(limit),
             **({"shown": limit} if len(self.tasks) > limit else {}),
             **({"truncated": True} if self.truncated else {}),
+            **self.history,
         }
 
 
@@ -436,12 +439,17 @@ async def search_tasks(
         if (include_archived or not t.get("archived"))
         and (status == "any" or (status == "completed") == is_done(t, done_ids))
         and all(w in _norm(t.get("title")) for w in words)
-        and (not by_period or _completed_within(t, done_from, done_before))
     ]
+    lookups = history.Lookups()
     if by_period:
-        selected.sort(key=lambda t: t.get("completedTimestamp") or 0, reverse=True)
+        # Cards put into a done column unmarked have no completion date: their log has it.
+        selected = await history.date_done_cards(
+            work, selected, done_ids, lookups, before=done_before, after=done_from
+        )
+        selected = [t for t in selected if _completed_within(t, done_from, done_before)]
+        selected.sort(key=lambda t: history.done_at(t) or 0, reverse=True)
     users = await work.directory.users_by_id() if any(t.get("assigned") for t in selected) else {}
-    return Found(scope, selected, s, users, done_ids, work.tz, truncated)
+    return Found(scope, selected, s, users, done_ids, work.tz, truncated, history.note(lookups))
 
 
 @tool_errors
