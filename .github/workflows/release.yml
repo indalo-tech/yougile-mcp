@@ -78,3 +78,6 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@v1.14.2
         with:
           packages-dir: dist/
+          # A re-run for a tag already on PyPI (to check the pipeline, or to finish a release
+          # whose other job failed) passes instead of failing on "file already exists".
+          skip-existing: true
