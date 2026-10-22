@@ -5,6 +5,35 @@
 
 ## [Unreleased]
 
+## [0.21.3] — 2026-10-22
+
+### Русский
+
+#### Безопасность
+- Минимальная версия FastMCP — 4.1.3: исправления безопасности 4.1.x (ограничение поиска
+  инструментов по регулярным выражениям, авторизация преобразованных компонентов, certifi не
+  старше 2026.10.19). httpx2 — не ниже 2.16.
+- Инцидент с удостоверяющим центром eMudhra (октябрь 2026): ядро доверяет системному хранилищу
+  сертификатов (httpx2 через truststore), поэтому обновления пакетов мало — обновите
+  `ca-certificates` (или хранилище вашей ОС) и uv до 0.13.4 или новее. Подробности — в
+  [уведомлении FastMCP](https://github.com/PrefectHQ/fastmcp/blob/main/SECURITY.md#certificate-authority-incident-october-2026).
+
+#### Изменено
+- Действия GitHub в CI и выпуске закреплены по коммитам, их обновляет Dependabot.
+
+### English
+
+#### Security
+- FastMCP 4.1.3 at least: the 4.1.x security fixes (bounded regex tool search, authorization of
+  transformed components, certifi 2026.10.19 or later). httpx2 2.16 at least.
+- The eMudhra certificate authority incident (October 2026): the core trusts the system CA store
+  (httpx2 via truststore), so updating packages is not enough — update `ca-certificates` (or your
+  OS store) and uv to 0.13.4 or later. See
+  [FastMCP's notice](https://github.com/PrefectHQ/fastmcp/blob/main/SECURITY.md#certificate-authority-incident-october-2026).
+
+#### Changed
+- GitHub Actions in CI and release are pinned to commits and kept current by Dependabot.
+
 ## [0.21.2] — 2026-10-14
 
 ### Русский
@@ -878,7 +907,8 @@
   before writing into client-facing projects.
 - Commands `setup`, `check`, `serve` (stdio / http).
 
-[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.21.2...HEAD
+[Unreleased]: https://github.com/indalo-tech/yougile-mcp/compare/v0.21.3...HEAD
+[0.21.3]: https://github.com/indalo-tech/yougile-mcp/compare/v0.21.2...v0.21.3
 [0.21.2]: https://github.com/indalo-tech/yougile-mcp/compare/v0.21.1...v0.21.2
 [0.21.1]: https://github.com/indalo-tech/yougile-mcp/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/indalo-tech/yougile-mcp/compare/v0.20.0...v0.21.0
