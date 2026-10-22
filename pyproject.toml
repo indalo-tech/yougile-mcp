@@ -14,15 +14,15 @@ classifiers = [
     "Topic :: Office/Business :: Groupware",
 ]
 dependencies = [
-    "fastmcp>=4.0.5,<5",
-    "httpx2>=2.13",
+    "fastmcp>=4.1.3,<5",
+    "httpx2>=2.16",
     "tzdata>=2025.2; sys_platform == 'win32'",  # Windows has no system time zone database
 ]
 
 [project.optional-dependencies]
 # Interactive screens (MCP Apps) for clients that draw them. Prefab UI is young and its renderer
 # talks a versioned protocol, so it is pinned exactly.
-apps = ["fastmcp[apps]>=4.0.5,<5", "prefab-ui==0.20.2"]
+apps = ["fastmcp[apps]>=4.1.3,<5", "prefab-ui==0.20.2"]
 
 [project.scripts]
 yougile-mcp = "yougile_mcp.__main__:main"
@@ -36,7 +36,7 @@ Changelog = "https://github.com/indalo-tech/yougile-mcp/blob/main/CHANGELOG.md"
 dev = [
     "pytest>=9.1",
     "pytest-asyncio>=1.4",
-    "ruff>=0.16",
+    "ruff>=0.17",
     "yougile-mcp[apps]",
 ]
 
